@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { scheduleEvents } from "@/lib/events";
+import { emitScheduleEvent } from "@/lib/socket-emit";
 
 export async function PUT(
   request: Request,
@@ -23,7 +23,7 @@ export async function PUT(
       timeSlot: true,
     },
   });
-  scheduleEvents.emit("schedule_updated");
+  emitScheduleEvent("schedule_updated");
   return NextResponse.json(schedule);
 }
 
@@ -33,6 +33,6 @@ export async function DELETE(
 ) {
   const { id } = await params;
   await prisma.schedule.delete({ where: { id } });
-  scheduleEvents.emit("schedule_deleted");
+  emitScheduleEvent("schedule_deleted");
   return NextResponse.json({ success: true });
 }

@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "event-scheduling",
-      script: ".next/standalone/server.js",
+      script: "server.custom.js",
       cwd: "/home/linuxuser/app/event-scheduling-management",
       env: {
         NODE_ENV: "production",

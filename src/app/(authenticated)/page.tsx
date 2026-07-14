@@ -92,18 +92,16 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchSchedules() }, [fetchSchedules]);
 
-  // Real-time: listen for schedule changes via SSE
+  // Real-time: listen via socket.io
   useEffect(() => {
-    const eventSource = new EventSource("/api/schedules/events");
-    eventSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === "schedule_created" || data.type === "schedule_updated" || data.type === "schedule_deleted") {
-          fetchSchedules();
-        }
-      } catch { /* ignore parse errors */ }
-    };
-    return () => eventSource.close();
+    let socket: ReturnType<typeof import("socket.io-client").io> | null = null;
+    import("socket.io-client").then(({ io }) => {
+      socket = io(window.location.origin, { path: "/socket.io" });
+      socket.on("schedule_change", () => {
+        fetchSchedules();
+      });
+    });
+    return () => { socket?.disconnect() };
   }, [fetchSchedules]);
 
   useEffect(() => {
