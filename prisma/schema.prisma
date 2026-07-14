@@ -63,3 +63,28 @@ model Schedule {
 
   @@unique([competitionTypeId, timeSlotId, eventDate])
 }
+
+model Product {
+  id           String             @id @default(cuid())
+  name         String             @unique
+  sku          String             @unique
+  unit         String             @default("pcs")
+  stock        Int                @default(0)
+  price        Float              @default(0)
+  description  String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  transactions StockTransaction[]
+}
+
+model StockTransaction {
+  id        String   @id @default(cuid())
+  productId String
+  type      String   // "in" or "out"
+  quantity  Int
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}

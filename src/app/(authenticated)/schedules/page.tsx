@@ -314,7 +314,9 @@ export default function SchedulesPage() {
               <Label>Tim</Label>
               <Select value={formData.teamId} onValueChange={(v) => v && setFormData({ ...formData, teamId: v })}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Pilih Tim" />
+                  <SelectValue placeholder="Pilih Tim">
+                    {teams.find((t) => t.id === formData.teamId)?.name || "Pilih Tim"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((t) => (
@@ -328,7 +330,9 @@ export default function SchedulesPage() {
                 <Label>Jenis Lomba</Label>
                 <Select value={formData.competitionTypeId} onValueChange={(v) => v && setFormData({ ...formData, competitionTypeId: v })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih Lomba" />
+                    <SelectValue placeholder="Pilih Lomba">
+                      {(() => { const t = types.find((x) => x.id === formData.competitionTypeId); return t ? `${t.name} (${t.code})` : "Pilih Lomba" })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {types.map((t) => (
@@ -341,7 +345,9 @@ export default function SchedulesPage() {
                 <Label>Slot Waktu</Label>
                 <Select value={formData.timeSlotId} onValueChange={(v) => v && setFormData({ ...formData, timeSlotId: v })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih Waktu" />
+                    <SelectValue placeholder="Pilih Waktu">
+                      {(() => { const s = slots.find((x) => x.id === formData.timeSlotId); return s ? `${s.startTime} – ${s.endTime}` : "Pilih Waktu" })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {slots.map((s) => (
@@ -355,7 +361,9 @@ export default function SchedulesPage() {
               <Label>Status</Label>
               <Select value={formData.status} onValueChange={(v) => v && setFormData({ ...formData, status: v })}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {STATUS_OPTIONS.find((s) => s.value === formData.status)?.label || "Pilih Status"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_OPTIONS.map((s) => (

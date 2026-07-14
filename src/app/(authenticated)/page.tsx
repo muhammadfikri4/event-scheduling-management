@@ -47,11 +47,11 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   day: "Hari", week: "Minggu", month: "Bulan", year: "Tahun", grid: "Grid",
 };
 
-const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Belum Bermain", variant: "outline" },
-  standby: { label: "Standby", variant: "secondary" },
-  playing: { label: "Sedang Bermain", variant: "default" },
-  completed: { label: "Sudah Bermain", variant: "destructive" },
+const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; bg: string; text: string }> = {
+  completed: { label: "Sudah Bermain", variant: "destructive", bg: "#22C55E", text: "#FFFFFF" },
+  playing: { label: "Sedang Bermain", variant: "default", bg: "#3B82F6", text: "#FFFFFF" },
+  standby: { label: "Standby", variant: "secondary", bg: "#FACC15", text: "#1A1A1A" },
+  pending: { label: "Belum Bermain", variant: "outline", bg: "#FFFFFF", text: "#6B7280" },
 };
 
 export default function DashboardPage() {
@@ -91,6 +91,21 @@ export default function DashboardPage() {
   }, [selectedDate, viewMode]);
 
   useEffect(() => { fetchSchedules() }, [fetchSchedules]);
+
+  // Real-time: listen for schedule changes via SSE
+  useEffect(() => {
+    const eventSource = new EventSource("/api/schedules/events");
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === "schedule_created" || data.type === "schedule_updated" || data.type === "schedule_deleted") {
+          fetchSchedules();
+        }
+      } catch { /* ignore parse errors */ }
+    };
+    return () => eventSource.close();
+  }, [fetchSchedules]);
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape" && fullscreen) setFullscreen(false) };
     document.addEventListener("keydown", h);
@@ -165,33 +180,38 @@ export default function DashboardPage() {
         {/* ──── GRID ──── */}
         {viewMode === "grid" && (
           <table className="w-full min-w-[600px] text-sm border-collapse">
-            <thead className="sticky top-0 z-10 bg-background">
+            <thead className="sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground border-b border-r w-24">Waktu</th>
+                <th className="px-3 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider bg-[#1E293B] border border-[#334155] w-28">
+                  TIME
+                </th>
                 {types.map((t) => (
-                  <th key={t.id} className="px-4 py-3 text-center font-medium border-b border-r last:border-r-0" style={{ color: t.color }}>
-                    {t.code}<span className="hidden sm:inline text-muted-foreground font-normal"> – {t.name}</span>
+                  <th key={t.id} className="px-3 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider border border-white/10" style={{ backgroundColor: t.color }}>
+                    {t.name} ({t.code})
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {slots.map((slot) => (
-                <tr key={slot.id} className="hover:bg-muted/20">
-                  <td className="px-4 py-4 border-b border-r align-top font-semibold text-xs">
-                    {slot.startTime}<span className="font-normal text-muted-foreground block">{slot.endTime}</span>
+                <tr key={slot.id}>
+                  <td className="px-3 py-3 border border-[#334155] bg-[#1E293B] text-white text-center font-bold text-xs whitespace-nowrap">
+                    {slot.startTime} – {slot.endTime}
                   </td>
                   {types.map((type) => {
                     const s = findSchedule(slot.id, type.id);
+                    const st = s ? STATUS[s.status] : null;
                     return (
-                      <td key={type.id} className="px-2 py-2 border-b border-r last:border-r-0 align-top">
-                        {s && (
-                          <button onClick={() => setDetail(s)} className="w-full rounded border-l-[3px] px-2.5 py-2 text-xs text-left bg-muted/30 hover:bg-muted/50 transition-colors" style={{ borderLeftColor: s.team.color }}>
-                            <span className="font-medium block truncate">{s.team.name}</span>
-                            <span className="text-muted-foreground text-[10px]">{s.competitionType.code}</span>
-                            <Badge variant={STATUS[s.status]?.variant} className="mt-1 text-[10px] px-1.5 py-0 block w-fit">{STATUS[s.status]?.label}</Badge>
+                      <td
+                        key={type.id}
+                        className="px-3 py-3 border border-gray-200 text-center"
+                        style={st ? { backgroundColor: st.bg } : {}}
+                      >
+                        {s ? (
+                          <button onClick={() => setDetail(s)} className="w-full hover:opacity-70 transition-opacity">
+                            <span className="font-semibold text-sm" style={{ color: st!.text }}>{s.team.name}</span>
                           </button>
-                        )}
+                        ) : null}
                       </td>
                     );
                   })}
@@ -206,22 +226,30 @@ export default function DashboardPage() {
           <div className="flex flex-col h-full">
             {slots.map((slot) => {
               const items = schedules.filter((s) => s.timeSlotId === slot.id);
+              const status = items.length > 0
+                ? items.some((s) => s.status === "playing") ? STATUS.playing
+                  : items.some((s) => s.status === "standby") ? STATUS.standby
+                  : items.some((s) => s.status === "completed") ? STATUS.completed
+                  : STATUS.pending
+                : null;
               return (
-                <div key={slot.id} className="flex border-b flex-1">
-                  <div className="w-20 shrink-0 border-r text-right px-3 pt-3">
-                    <span className="text-xs font-semibold">{slot.startTime}</span>
-                    <span className="text-[10px] text-muted-foreground block">{slot.endTime}</span>
+                <div key={slot.id} className="flex border-b flex-1" style={status ? { backgroundColor: status.bg } : {}}>
+                  <div className="w-20 shrink-0 border-r bg-[#1E293B] text-white text-right px-3 pt-3">
+                    <span className="text-xs font-bold">{slot.startTime}</span>
+                    <span className="text-[10px] opacity-60 block">{slot.endTime}</span>
                   </div>
-                  <div className="flex-1 p-2">
-                    {items.map((s) => (
-                      <button key={s.id} onClick={() => setDetail(s)}
-                        className="rounded border-l-[3px] px-2.5 py-1.5 text-xs mb-1 block bg-muted/30 hover:bg-muted/50 transition-colors max-w-xs text-left"
-                        style={{ borderLeftColor: s.team.color }}>
-                        <span className="font-medium" style={{ color: s.team.color }}>{s.team.name}</span>
-                        <span className="text-muted-foreground ml-1">{s.competitionType.code}</span>
-                        <span className="text-muted-foreground ml-1">{s.timeSlot.startTime}–{s.timeSlot.endTime}</span>
-                      </button>
-                    ))}
+                  <div className="flex-1 p-1.5 flex gap-1">
+                    {items.map((s) => {
+                      const st = STATUS[s.status];
+                      return (
+                        <button key={s.id} onClick={() => setDetail(s)}
+                          className="flex-1 rounded-md px-3 py-2 text-left hover:opacity-80 transition-opacity h-full flex flex-col justify-center"
+                          style={{ backgroundColor: st.bg, color: st.text, borderLeft: `4px solid ${s.competitionType.color}` }}>
+                          <span className="font-bold text-sm block">{s.team.name}</span>
+                          <span className="text-xs opacity-70">{s.competitionType.code} · {s.timeSlot.startTime}–{s.timeSlot.endTime}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -358,10 +386,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ── FOOTER LEGEND ── */}
-      <footer className="flex items-center gap-3 px-4 lg:px-6 py-2 border-t text-xs text-muted-foreground shrink-0">
-        <span className="font-medium">Keterangan:</span>
+      <footer className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-2.5 border-t text-xs shrink-0">
+        <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Keterangan:</span>
         {Object.entries(STATUS).map(([k, v]) => (
-          <Badge key={k} variant={v.variant} className="text-[10px]">{v.label}</Badge>
+          <div key={k} className="flex items-center gap-1.5">
+            <span className="w-4 h-4 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: v.bg }} />
+            <span className="text-[11px] font-medium text-foreground">{v.label}</span>
+          </div>
         ))}
       </footer>
 

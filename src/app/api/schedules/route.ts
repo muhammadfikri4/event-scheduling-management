@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { scheduleEvents } from "@/lib/events";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,5 +47,6 @@ export async function POST(request: Request) {
       timeSlot: true,
     },
   });
+  scheduleEvents.emit("schedule_created");
   return NextResponse.json(schedule, { status: 201 });
 }
