@@ -21,7 +21,7 @@ export async function createSession(userId: string, username: string, name: stri
 
   (await cookies()).set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && !process.env.INSECURE_COOKIES,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24,
