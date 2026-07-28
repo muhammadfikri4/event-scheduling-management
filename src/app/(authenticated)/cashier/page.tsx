@@ -28,7 +28,8 @@ interface CartItem {
 
 interface Sale {
   id: string; invoiceNumber: string; totalAmount: number;
-  paidAmount: number; changeAmount: number;
+  paidAmount: number; changeAmount: number; note: string | null;
+  createdAt: string;
   items: { product: Product; quantity: number; price: number; size: string | null; subtotal: number }[];
 }
 
