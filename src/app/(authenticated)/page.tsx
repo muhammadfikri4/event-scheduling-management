@@ -31,9 +31,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 
-interface Team { id: string; name: string; color: string }
-interface CompetitionType { id: string; name: string; code: string; color: string }
+interface Team { id: string; name: string; color: string; logo: string | null }
+interface CompetitionType { id: string; name: string; code: string; color: string; logo: string | null }
 interface TimeSlot { id: string; startTime: string; endTime: string; order: number }
 interface Schedule {
   id: string; teamId: string; competitionTypeId: string; timeSlotId: string;
@@ -185,7 +186,10 @@ export default function DashboardPage() {
                 </th>
                 {types.map((t) => (
                   <th key={t.id} className="px-3 py-3 text-center text-[11px] font-bold text-white uppercase tracking-wider border border-white/10" style={{ backgroundColor: t.color }}>
-                    {t.name} ({t.code})
+                    <div className="flex items-center justify-center gap-1.5">
+                      {t.logo && <Image src={t.logo} alt={t.code} width={24} height={24} className="w-6 h-6 rounded object-cover" />}
+                      <span>{t.name} ({t.code})</span>
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -207,7 +211,10 @@ export default function DashboardPage() {
                       >
                         {s ? (
                           <button onClick={() => setDetail(s)} className="w-full hover:opacity-70 transition-opacity">
-                            <span className="font-semibold text-sm" style={{ color: st!.text }}>{s.team.name}</span>
+                            <div className="flex items-center justify-center gap-1.5">
+                              {s.team.logo && <Image src={s.team.logo} alt={s.team.name} width={20} height={20} className="w-5 h-5 rounded-full object-cover" />}
+                              <span className="font-semibold text-sm" style={{ color: st!.text }}>{s.team.name}</span>
+                            </div>
                           </button>
                         ) : null}
                       </td>
@@ -243,7 +250,10 @@ export default function DashboardPage() {
                         <button key={s.id} onClick={() => setDetail(s)}
                           className="flex-1 rounded-md px-3 py-2 text-left hover:opacity-80 transition-opacity h-full flex flex-col justify-center"
                           style={{ backgroundColor: st.bg, color: st.text, borderLeft: `4px solid ${s.competitionType.color}` }}>
-                          <span className="font-bold text-sm block">{s.team.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            {s.team.logo && <Image src={s.team.logo} alt={s.team.name} width={20} height={20} className="w-5 h-5 rounded-full object-cover shrink-0" />}
+                            <span className="font-bold text-sm">{s.team.name}</span>
+                          </div>
                           <span className="text-xs opacity-70">{s.competitionType.code} · {s.timeSlot.startTime}–{s.timeSlot.endTime}</span>
                         </button>
                       );
@@ -406,9 +416,15 @@ export default function DashboardPage() {
               <Separator />
               <div className="grid grid-cols-[100px_1fr] gap-y-3">
                 <span className="text-muted-foreground">Tim</span>
-                <span className="font-medium" style={{ color: detail.team.color }}>{detail.team.name}</span>
+                <span className="font-medium flex items-center gap-2" style={{ color: detail.team.color }}>
+                  {detail.team.logo && <Image src={detail.team.logo} alt={detail.team.name} width={24} height={24} className="w-6 h-6 rounded-full object-cover" />}
+                  {detail.team.name}
+                </span>
                 <span className="text-muted-foreground">Lomba</span>
-                <span>{detail.competitionType.name} ({detail.competitionType.code})</span>
+                <span className="flex items-center gap-2">
+                  {detail.competitionType.logo && <Image src={detail.competitionType.logo} alt={detail.competitionType.code} width={24} height={24} className="w-6 h-6 rounded object-cover" />}
+                  {detail.competitionType.name} ({detail.competitionType.code})
+                </span>
                 <span className="text-muted-foreground">Waktu</span>
                 <span>{detail.timeSlot.startTime} – {detail.timeSlot.endTime}</span>
                 <span className="text-muted-foreground">Status</span>

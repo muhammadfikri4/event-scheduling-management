@@ -170,6 +170,10 @@ export default function SchedulesPage() {
   }
 
   function openCreate() { setFormData({ teamId: "", competitionTypeId: "", timeSlotId: "", status: "pending" }); setOpen(true) }
+  function openCreateAt(slotId: string, typeId: string) {
+    setFormData({ teamId: "", competitionTypeId: typeId, timeSlotId: slotId, status: "pending" });
+    setOpen(true);
+  }
   function closeDialog() { setOpen(false) }
 
   const findSchedule = (tsId: string, ctId: string) =>
@@ -276,7 +280,12 @@ export default function SchedulesPage() {
                             onStatusChange={handleStatusChange}
                           />
                         ) : (
-                          <span className="text-muted-foreground/30 block text-center">—</span>
+                          <button
+                            onClick={() => openCreateAt(slot.id, type.id)}
+                            className="w-full h-full min-h-[40px] rounded border-2 border-dashed border-transparent hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4 text-muted-foreground/30" />
+                          </button>
                         )}
                       </DroppableCell>
                     );

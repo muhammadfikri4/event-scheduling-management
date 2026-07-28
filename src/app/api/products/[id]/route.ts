@@ -15,6 +15,9 @@ export async function PUT(
       unit: body.unit,
       price: body.price,
       description: body.description,
+      image: body.image,
+      isClothing: body.isClothing,
+      sizes: body.sizes,
     },
   });
   return NextResponse.json(product);

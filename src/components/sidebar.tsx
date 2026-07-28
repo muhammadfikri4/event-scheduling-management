@@ -15,9 +15,14 @@ import {
   Package,
   PackagePlus,
   PackageMinus,
+  StickyNote,
+  ShoppingCart,
+  Receipt,
+  Printer,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { usePrinter } from "@/lib/printer";
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }> }
 interface NavGroup { title: string; items: NavItem[] }
@@ -31,17 +36,44 @@ const navGroups: NavGroup[] = [
       { href: "/competition-types", label: "Jenis Lomba", icon: Trophy },
       { href: "/time-slots", label: "Waktu", icon: Clock },
       { href: "/schedules", label: "Buat Jadwal", icon: CalendarPlus },
+      { href: "/notes", label: "Catatan", icon: StickyNote },
     ],
   },
   {
     title: "Point of Sales",
     items: [
+      { href: "/cashier", label: "Kasir", icon: ShoppingCart },
+      { href: "/sales", label: "Penjualan", icon: Receipt },
       { href: "/products", label: "Produk / Item", icon: Package },
       { href: "/stock-in", label: "Barang Masuk", icon: PackagePlus },
       { href: "/stock-out", label: "Barang Keluar", icon: PackageMinus },
     ],
   },
 ];
+
+function PrinterStatus() {
+  const { device, status } = usePrinter();
+  const pathname = usePathname();
+  const isActive = pathname === "/printer";
+
+  return (
+    <Link
+      href="/printer"
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}
+    >
+      <div className="relative">
+        <Printer className="w-4 h-4" />
+        <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${status === "connected" ? "bg-green-500" : status === "connecting" ? "bg-yellow-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
+      </div>
+      <span className="flex-1">Printer</span>
+      {status === "connected" && device && (
+        <span className="text-[10px] text-green-600 dark:text-green-400 truncate max-w-[80px]">
+          {device.type === "serial" ? "USB" : "BT"}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function NavContent({ pathname, onLogout }: { pathname: string; onLogout: () => void }) {
   return (
@@ -79,7 +111,8 @@ function NavContent({ pathname, onLogout }: { pathname: string; onLogout: () => 
         ))}
       </nav>
       <Separator />
-      <div className="px-3 py-3">
+      <div className="px-3 py-2 space-y-0.5">
+        <PrinterStatus />
         <button onClick={onLogout}
           className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full">
           <LogOut className="w-4 h-4" />

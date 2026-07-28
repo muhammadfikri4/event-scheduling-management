@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       name: body.name,
       code: body.code,
       color: body.color || "#6366F1",
+      logo: body.logo || null,
     },
   });
   return NextResponse.json(type, { status: 201 });

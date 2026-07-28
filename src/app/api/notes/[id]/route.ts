@@ -7,16 +7,16 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const type = await prisma.competitionType.update({
+  const note = await prisma.note.update({
     where: { id },
     data: {
-      name: body.name,
-      code: body.code,
-      color: body.color,
-      logo: body.logo,
+      eventDate: body.eventDate,
+      time: body.time,
+      title: body.title,
+      content: body.content,
     },
   });
-  return NextResponse.json(type);
+  return NextResponse.json(note);
 }
 
 export async function DELETE(
@@ -24,6 +24,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  await prisma.competitionType.delete({ where: { id } });
+  await prisma.note.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

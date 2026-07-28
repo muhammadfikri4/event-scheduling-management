@@ -17,12 +17,26 @@ model User {
 }
 
 model Team {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  color     String     @default("#3B82F6")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  schedules Schedule[]
+  id           String       @id @default(cuid())
+  name         String       @unique
+  color        String       @default("#3B82F6")
+  logo         String?
+  managerName  String?
+  managerPhone String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  schedules    Schedule[]
+  members      TeamMember[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model CompetitionType {
@@ -30,6 +44,7 @@ model CompetitionType {
   name      String     @unique
   code      String     @unique
   color     String     @default("#6366F1")
+  logo      String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   schedules Schedule[]
@@ -64,17 +79,31 @@ model Schedule {
   @@unique([competitionTypeId, timeSlotId, eventDate])
 }
 
+model Note {
+  id        String   @id @default(cuid())
+  eventDate String
+  time      String
+  title     String
+  content   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Product {
-  id           String             @id @default(cuid())
-  name         String             @unique
-  sku          String             @unique
-  unit         String             @default("pcs")
-  stock        Int                @default(0)
-  price        Float              @default(0)
-  description  String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id          String             @id @default(cuid())
+  name        String             @unique
+  sku         String             @unique
+  unit        String             @default("pcs")
+  stock       Int                @default(0)
+  price       Float              @default(0)
+  description String?
+  image       String?
+  isClothing  Boolean            @default(false)
+  sizes       String?            // JSON array: ["S","M","L","XL","XXL"]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   transactions StockTransaction[]
+  saleItems    SaleItem[]
 }
 
 model StockTransaction {
@@ -83,8 +112,36 @@ model StockTransaction {
   type      String   // "in" or "out"
   quantity  Int
   note      String?
+  size      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Sale {
+  id            String     @id @default(cuid())
+  invoiceNumber String     @unique
+  totalAmount   Float
+  paidAmount    Float
+  changeAmount  Float
+  note          String?
+  createdBy     String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  price     Float
+  size      String?
+  subtotal  Float
+  createdAt DateTime @default(now())
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 }

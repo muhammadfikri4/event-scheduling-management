@@ -18,6 +18,9 @@ export async function POST(request: Request) {
       stock: body.stock || 0,
       price: body.price || 0,
       description: body.description || null,
+      image: body.image || null,
+      isClothing: body.isClothing || false,
+      sizes: body.sizes || null,
     },
   });
   return NextResponse.json(product, { status: 201 });

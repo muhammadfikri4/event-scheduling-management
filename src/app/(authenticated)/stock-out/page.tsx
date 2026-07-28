@@ -14,16 +14,17 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import Image from "next/image";
 
-interface Product { id: string; name: string; sku: string; unit: string; stock: number }
-interface Transaction { id: string; productId: string; type: string; quantity: number; note: string | null; createdAt: string; product: Product }
+interface Product { id: string; name: string; sku: string; unit: string; stock: number; image: string | null; isClothing: boolean; sizes: string | null }
+interface Transaction { id: string; productId: string; type: string; quantity: number; note: string | null; size: string | null; createdAt: string; product: Product }
 
 export default function StockOutPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ productId: "", quantity: 1, note: "" });
+  const [form, setForm] = useState({ productId: "", quantity: 1, note: "", size: "" });
 
   useEffect(() => {
     fetch("/api/products").then((r) => r.json()).then(setProducts);
@@ -34,18 +35,21 @@ export default function StockOutPage() {
     setTransactions(await fetch("/api/stock-transactions?type=out").then((r) => r.json()));
   }
 
+  const selectedProduct = products.find((p) => p.id === form.productId);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.productId) { toast.error("Pilih produk"); return }
+    if (!form.note.trim()) { toast.error("Catatan wajib diisi untuk barang keluar"); return }
     setLoading(true);
     try {
       const res = await fetch("/api/stock-transactions", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, type: "out" }),
+        body: JSON.stringify({ ...form, type: "out", size: form.size || null }),
       });
       if (res.ok) {
         toast.success("Barang keluar berhasil dicatat");
-        setOpen(false); setForm({ productId: "", quantity: 1, note: "" });
+        setOpen(false); setForm({ productId: "", quantity: 1, note: "", size: "" });
         fetchTransactions();
         fetch("/api/products").then((r) => r.json()).then(setProducts);
       } else {
@@ -53,6 +57,11 @@ export default function StockOutPage() {
         toast.error(err.error || "Gagal menyimpan");
       }
     } finally { setLoading(false) }
+  }
+
+  function parseSizes(s: string | null): string[] {
+    if (!s) return [];
+    try { return JSON.parse(s) } catch { return [] }
   }
 
   return (
@@ -73,6 +82,7 @@ export default function StockOutPage() {
               <TableHead>Produk</TableHead>
               <TableHead>Kode</TableHead>
               <TableHead className="text-right">Jumlah</TableHead>
+              <TableHead>Size</TableHead>
               <TableHead>Catatan</TableHead>
             </TableRow>
           </TableHeader>
@@ -80,13 +90,19 @@ export default function StockOutPage() {
             {transactions.map((t) => (
               <TableRow key={t.id}>
                 <TableCell className="text-muted-foreground text-xs">{format(new Date(t.createdAt), "d MMM yyyy, HH:mm", { locale: localeId })}</TableCell>
-                <TableCell className="font-medium">{t.product.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {t.product.image && <Image src={t.product.image} alt={t.product.name} width={28} height={28} className="w-7 h-7 rounded object-cover" />}
+                    <span className="font-medium">{t.product.name}</span>
+                  </div>
+                </TableCell>
                 <TableCell><Badge variant="secondary" className="text-xs">{t.product.sku}</Badge></TableCell>
                 <TableCell className="text-right font-semibold text-red-600">-{t.quantity} {t.product.unit}</TableCell>
+                <TableCell>{t.size ? <Badge variant="outline" className="text-xs">{t.size}</Badge> : "—"}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{t.note || "—"}</TableCell>
               </TableRow>
             ))}
-            {transactions.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada transaksi keluar</TableCell></TableRow>}
+            {transactions.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Belum ada transaksi keluar</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
@@ -99,7 +115,7 @@ export default function StockOutPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Produk</Label>
-              <Select value={form.productId} onValueChange={(v) => v && setForm({ ...form, productId: v })}>
+              <Select value={form.productId} onValueChange={(v) => v && setForm({ ...form, productId: v, size: "" })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Pilih Produk">
                     {(() => { const p = products.find((x) => x.id === form.productId); return p ? `${p.name} (${p.sku})` : "Pilih Produk" })()}
@@ -107,18 +123,38 @@ export default function StockOutPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku}) · Stok: {p.stock} {p.unit}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      <div className="flex items-center gap-2">
+                        {p.image && <Image src={p.image} alt={p.name} width={20} height={20} className="w-5 h-5 rounded object-cover" />}
+                        <span>{p.name} ({p.sku}) · Stok: {p.stock} {p.unit}</span>
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedProduct?.isClothing && (
+              <div className="space-y-2">
+                <Label>Ukuran</Label>
+                <div className="flex flex-wrap gap-2">
+                  {parseSizes(selectedProduct.sizes).map((size) => (
+                    <button key={size} type="button" onClick={() => setForm({ ...form, size })}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${form.size === size ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-accent"}`}>
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Jumlah</Label>
               <NumberInput value={form.quantity} onChange={(v) => setForm({ ...form, quantity: v })} min={1} />
             </div>
             <div className="space-y-2">
-              <Label>Catatan</Label>
-              <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Opsional" />
+              <Label>Catatan <span className="text-destructive">*</span></Label>
+              <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Wajib diisi" required />
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>Batal</Button>

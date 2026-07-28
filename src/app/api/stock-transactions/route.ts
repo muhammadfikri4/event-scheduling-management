@@ -18,7 +18,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { productId, type, quantity, note } = body;
+  const { productId, type, quantity, note, size } = body;
+
+  // Validate note required for outgoing
+  if (type === "out" && !note?.trim()) {
+    return NextResponse.json({ error: "Catatan wajib diisi untuk barang keluar" }, { status: 400 });
+  }
 
   // Validate stock for outgoing
   if (type === "out") {
@@ -31,7 +36,7 @@ export async function POST(request: Request) {
   // Create transaction and update stock atomically
   const [transaction] = await prisma.$transaction([
     prisma.stockTransaction.create({
-      data: { productId, type, quantity, note: note || null },
+      data: { productId, type, quantity, note: note || null, size: size || null },
       include: { product: true },
     }),
     prisma.product.update({
