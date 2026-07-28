@@ -1,6 +1,6 @@
 "use client";
 
-import { Usb, Bluetooth, Unplug, Printer, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Usb, Bluetooth, Unplug, Printer, CheckCircle2, XCircle, Loader2, Plus, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,32 +8,23 @@ import { usePrinter } from "@/lib/printer";
 import { toast } from "sonner";
 
 export default function PrinterPage() {
-  const { device, status, connectUSB, connectBluetooth, disconnect, print, isSupported } = usePrinter();
+  const { device, status, savedPorts, connectUSB, connectPort, connectBluetooth, disconnect, print, isSupported } = usePrinter();
 
   async function handleTestPrint() {
     try {
       const encoder = new TextEncoder();
-      const commands = new Uint8Array([
-        // ESC @ — initialize
-        0x1B, 0x40,
-        // ESC a 1 — center align
-        0x1B, 0x61, 0x01,
-        // ESC E 1 — bold on
-        0x1B, 0x45, 0x01,
-      ]);
-      const text = encoder.encode("TEST PRINT\n");
-      const boldOff = new Uint8Array([0x1B, 0x45, 0x00]);
-      const line = encoder.encode("================================\n");
-      const body = encoder.encode("Printer berhasil terhubung!\n");
-      const date = encoder.encode(`${new Date().toLocaleString("id-ID")}\n`);
-      const footer = encoder.encode("\n\n\n");
-      // GS V 0 — full cut
-      const cut = new Uint8Array([0x1D, 0x56, 0x00]);
-
       const data = new Uint8Array([
-        ...commands, ...text, ...boldOff, ...line, ...body, ...date, ...line, ...footer, ...cut,
+        0x1B, 0x40,                                           // ESC @ — initialize
+        0x1B, 0x61, 0x01,                                     // center
+        0x1B, 0x45, 0x01,                                     // bold on
+        ...encoder.encode("TEST PRINT\n"),
+        0x1B, 0x45, 0x00,                                     // bold off
+        ...encoder.encode("================================\n"),
+        ...encoder.encode("Printer berhasil terhubung!\n"),
+        ...encoder.encode(`${new Date().toLocaleString("id-ID")}\n`),
+        ...encoder.encode("================================\n\n\n\n"),
+        0x1D, 0x56, 0x00,                                     // full cut
       ]);
-
       await print(data);
       toast.success("Test print berhasil!");
     } catch {
@@ -45,13 +36,13 @@ export default function PrinterPage() {
     <div className="space-y-6 p-4 md:p-6 max-w-2xl">
       <div>
         <h1 className="text-lg font-semibold">Pengaturan Printer</h1>
-        <p className="text-sm text-muted-foreground">Hubungkan printer thermal untuk cetak nota</p>
+        <p className="text-sm text-muted-foreground">Hubungkan dan kelola printer thermal</p>
       </div>
 
-      {/* Status Card */}
+      {/* Active Connection */}
       <Card className="p-5">
         <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${status === "connected" ? "bg-green-100 dark:bg-green-950/50" : status === "connecting" ? "bg-yellow-100 dark:bg-yellow-950/50" : "bg-muted"}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${status === "connected" ? "bg-green-100 dark:bg-green-950/50" : status === "connecting" ? "bg-yellow-100 dark:bg-yellow-950/50" : "bg-muted"}`}>
             {status === "connected" ? (
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             ) : status === "connecting" ? (
@@ -60,106 +51,124 @@ export default function PrinterPage() {
               <XCircle className="w-6 h-6 text-muted-foreground" />
             )}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="font-semibold">
-                {status === "connected" ? device?.name : status === "connecting" ? "Menghubungkan..." : "Tidak terhubung"}
+              <p className="font-semibold truncate">
+                {status === "connected" ? device?.name : status === "connecting" ? "Menghubungkan..." : "Tidak ada printer aktif"}
               </p>
               {status === "connected" && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs shrink-0">
                   {device?.type === "serial" ? "USB" : "Bluetooth"}
                 </Badge>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
               {status === "connected"
-                ? "Printer siap digunakan untuk cetak nota"
-                : "Hubungkan printer untuk mulai mencetak"}
+                ? "Siap cetak nota"
+                : "Pilih printer di bawah atau tambah printer baru"}
             </p>
           </div>
-          {status === "connected" && (
-            <Button variant="outline" size="sm" onClick={disconnect}>
-              <Unplug className="w-4 h-4" /> Putuskan
-            </Button>
-          )}
+          <div className="flex gap-2 shrink-0">
+            {status === "connected" && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleTestPrint}>
+                  <Printer className="w-4 h-4" /> Test
+                </Button>
+                <Button variant="outline" size="sm" onClick={disconnect}>
+                  <Unplug className="w-4 h-4" /> Putuskan
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </Card>
 
-      {/* Connect Options */}
-      {status !== "connected" && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* USB */}
-          <Card className={`p-5 ${!isSupported.serial ? "opacity-50" : "cursor-pointer hover:shadow-md transition-shadow"}`}>
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
-                <Usb className="w-7 h-7 text-blue-600" />
+      {/* Saved USB Devices */}
+      {savedPorts.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground px-1">Printer Tersimpan (USB)</h2>
+          {savedPorts.map((sp, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                  <Usb className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{sp.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    VID: {sp.info.usbVendorId || "?"} · PID: {sp.info.usbProductId || "?"}
+                  </p>
+                </div>
+                {sp.connected ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400 shrink-0">Aktif</Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => connectPort(sp.port)}
+                    disabled={status === "connecting"}
+                  >
+                    <Plug className="w-4 h-4" /> Hubungkan
+                  </Button>
+                )}
               </div>
-              <div>
-                <p className="font-semibold">USB (Kabel)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Colok printer via kabel USB</p>
-              </div>
-              <Button
-                className="w-full"
-                onClick={connectUSB}
-                disabled={!isSupported.serial || status === "connecting"}
-              >
-                {status === "connecting" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Usb className="w-4 h-4" />}
-                Hubungkan USB
-              </Button>
-              {!isSupported.serial && (
-                <p className="text-[10px] text-destructive">Browser tidak mendukung Web Serial. Gunakan Chrome.</p>
-              )}
-            </div>
-          </Card>
-
-          {/* Bluetooth */}
-          <Card className={`p-5 ${!isSupported.bluetooth ? "opacity-50" : "cursor-pointer hover:shadow-md transition-shadow"}`}>
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-14 h-14 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center">
-                <Bluetooth className="w-7 h-7 text-indigo-600" />
-              </div>
-              <div>
-                <p className="font-semibold">Bluetooth</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Cari printer Bluetooth terdekat</p>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={connectBluetooth}
-                disabled={!isSupported.bluetooth || status === "connecting"}
-              >
-                {status === "connecting" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bluetooth className="w-4 h-4" />}
-                Cari Bluetooth
-              </Button>
-              {!isSupported.bluetooth && (
-                <p className="text-[10px] text-destructive">Browser tidak mendukung Web Bluetooth. Gunakan Chrome.</p>
-              )}
-            </div>
-          </Card>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Test Print */}
-      {status === "connected" && (
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-sm">Test Print</p>
-              <p className="text-xs text-muted-foreground">Cetak halaman tes untuk memastikan printer berfungsi</p>
+      {/* Add New Device */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground px-1">Tambah Printer Baru</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card
+            className={`p-4 ${!isSupported.serial ? "opacity-50" : "cursor-pointer hover:shadow-md transition-shadow"}`}
+            onClick={isSupported.serial && status !== "connecting" ? connectUSB : undefined}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                <Usb className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> USB (Kabel)
+                </p>
+                <p className="text-xs text-muted-foreground">Colok printer lalu klik di sini</p>
+              </div>
             </div>
-            <Button variant="outline" onClick={handleTestPrint}>
-              <Printer className="w-4 h-4" /> Test Print
-            </Button>
-          </div>
-        </Card>
-      )}
+            {!isSupported.serial && (
+              <p className="text-[10px] text-destructive mt-2">Browser tidak support. Gunakan Chrome.</p>
+            )}
+          </Card>
+
+          <Card
+            className={`p-4 ${!isSupported.bluetooth ? "opacity-50" : "cursor-pointer hover:shadow-md transition-shadow"}`}
+            onClick={isSupported.bluetooth && status !== "connecting" ? connectBluetooth : undefined}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center shrink-0">
+                <Bluetooth className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Bluetooth
+                </p>
+                <p className="text-xs text-muted-foreground">Scan printer Bluetooth terdekat</p>
+              </div>
+            </div>
+            {!isSupported.bluetooth && (
+              <p className="text-[10px] text-destructive mt-2">Browser tidak support. Gunakan Chrome.</p>
+            )}
+          </Card>
+        </div>
+      </div>
 
       {/* Info */}
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p>* Fitur ini memerlukan browser <strong>Google Chrome</strong> versi 89+</p>
-        <p>* Untuk USB, pastikan driver printer sudah terinstall di komputer</p>
-        <p>* Untuk Bluetooth, hanya mendukung printer dengan BLE (Bluetooth Low Energy)</p>
-        <p>* Printer yang sudah pernah dihubungkan via USB akan otomatis reconnect</p>
+      <div className="text-xs text-muted-foreground space-y-1 border-t pt-4">
+        <p>* Memerlukan <strong>Google Chrome</strong> versi 89+</p>
+        <p>* Printer USB yang sudah pernah dihubungkan akan tersimpan dan bisa di-reconnect</p>
+        <p>* Bluetooth hanya support BLE (Bluetooth Low Energy)</p>
+        <p>* Saat mencetak nota, jika printer aktif maka langsung cetak ke device. Jika tidak, gunakan print dialog browser.</p>
       </div>
     </div>
   );

@@ -2,6 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
+export interface SavedPort {
+  port: SerialPort;
+  info: SerialPortInfo;
+  label: string;
+  connected: boolean;
+}
+
 export interface PrinterDevice {
   type: "serial" | "bluetooth";
   name: string;
@@ -13,7 +20,10 @@ export interface PrinterDevice {
 interface PrinterContextType {
   device: PrinterDevice | null;
   status: "disconnected" | "connecting" | "connected";
+  savedPorts: SavedPort[];
+  refreshSavedPorts: () => Promise<void>;
   connectUSB: () => Promise<void>;
+  connectPort: (port: SerialPort) => Promise<void>;
   connectBluetooth: () => Promise<void>;
   disconnect: () => Promise<void>;
   print: (data: Uint8Array) => Promise<void>;
@@ -26,6 +36,17 @@ export function usePrinter() {
   const ctx = useContext(PrinterContext);
   if (!ctx) throw new Error("usePrinter must be used within PrinterProvider");
   return ctx;
+}
+
+function portLabel(info: SerialPortInfo): string {
+  const vid = info.usbVendorId;
+  // Common thermal printer vendor IDs
+  if (vid === 0x1A86) return "USB Printer (CH340)";
+  if (vid === 0x10C4) return "USB Printer (CP2102)";
+  if (vid === 0x0483) return "USB Printer (STM32)";
+  if (vid === 0x04B8) return "Epson Printer";
+  if (vid === 0x0416) return "WinChipHead Printer";
+  return `USB Device (VID:${vid || "?"} PID:${info.usbProductId || "?"})`;
 }
 
 // Common BLE service UUIDs for thermal printers
@@ -41,50 +62,66 @@ const BLE_CHARACTERISTICS = [
 export function PrinterProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<PrinterDevice | null>(null);
   const [status, setStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+  const [savedPorts, setSavedPorts] = useState<SavedPort[]>([]);
 
   const isSupported = {
     serial: typeof navigator !== "undefined" && "serial" in navigator,
     bluetooth: typeof navigator !== "undefined" && "bluetooth" in navigator,
   };
 
-  // Auto-reconnect saved USB ports on mount
-  useEffect(() => {
+  const refreshSavedPorts = useCallback(async () => {
     if (!isSupported.serial) return;
-    navigator.serial.getPorts().then(async (ports) => {
-      if (ports.length > 0 && !device) {
-        try {
-          setStatus("connecting");
-          const port = ports[0];
-          if (!port.readable) {
-            await port.open({ baudRate: 9600 });
-          }
-          const info = port.getInfo();
-          setDevice({
-            type: "serial",
-            name: `USB Printer (VID:${info.usbVendorId || "?"})`,
-            port,
-          });
-          setStatus("connected");
-        } catch {
-          setStatus("disconnected");
-        }
-      }
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const ports = await navigator.serial.getPorts();
+    setSavedPorts(
+      ports.map((port) => {
+        const info = port.getInfo();
+        return {
+          port,
+          info,
+          label: portLabel(info),
+          connected: device?.port === port && status === "connected",
+        };
+      })
+    );
+  }, [isSupported.serial, device, status]);
 
-  // Listen for USB disconnect
+  // Load saved ports on mount
+  useEffect(() => { refreshSavedPorts() }, [refreshSavedPorts]);
+
+  // Listen for USB connect/disconnect
   useEffect(() => {
     if (!isSupported.serial) return;
+    const handleChange = () => refreshSavedPorts();
     const handleDisconnect = (e: Event) => {
       const port = (e as CustomEvent).target as SerialPort;
       if (device?.port === port) {
         setDevice(null);
         setStatus("disconnected");
       }
+      refreshSavedPorts();
     };
+    navigator.serial.addEventListener("connect", handleChange);
     navigator.serial.addEventListener("disconnect", handleDisconnect);
-    return () => navigator.serial.removeEventListener("disconnect", handleDisconnect);
-  }, [device, isSupported.serial]);
+    return () => {
+      navigator.serial.removeEventListener("connect", handleChange);
+      navigator.serial.removeEventListener("disconnect", handleDisconnect);
+    };
+  }, [device, isSupported.serial, refreshSavedPorts]);
+
+  const connectPort = useCallback(async (port: SerialPort) => {
+    try {
+      setStatus("connecting");
+      if (!port.readable) {
+        await port.open({ baudRate: 9600 });
+      }
+      const info = port.getInfo();
+      setDevice({ type: "serial", name: portLabel(info), port });
+      setStatus("connected");
+      await refreshSavedPorts();
+    } catch {
+      setStatus("disconnected");
+    }
+  }, [refreshSavedPorts]);
 
   const connectUSB = useCallback(async () => {
     if (!isSupported.serial) return;
@@ -93,16 +130,13 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate: 9600 });
       const info = port.getInfo();
-      setDevice({
-        type: "serial",
-        name: `USB Printer (VID:${info.usbVendorId || "?"} PID:${info.usbProductId || "?"})`,
-        port,
-      });
+      setDevice({ type: "serial", name: portLabel(info), port });
       setStatus("connected");
+      await refreshSavedPorts();
     } catch {
       setStatus("disconnected");
     }
-  }, [isSupported.serial]);
+  }, [isSupported.serial, refreshSavedPorts]);
 
   const connectBluetooth = useCallback(async () => {
     if (!isSupported.bluetooth) return;
@@ -115,7 +149,6 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
 
       const server = await btDevice.gatt!.connect();
 
-      // Try to find a writable characteristic
       let characteristic: BluetoothRemoteGATTCharacteristic | null = null;
       for (const serviceUUID of BLE_SERVICES) {
         try {
@@ -131,7 +164,6 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
       }
 
       if (!characteristic) {
-        // Fallback: get first writable characteristic from any service
         const services = await server.getPrimaryServices();
         for (const service of services) {
           try {
@@ -147,9 +179,7 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!characteristic) {
-        throw new Error("No writable characteristic found");
-      }
+      if (!characteristic) throw new Error("No writable characteristic found");
 
       btDevice.addEventListener("gattserverdisconnected", () => {
         setDevice(null);
@@ -170,16 +200,15 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(async () => {
     if (device?.type === "serial" && device.port) {
-      try {
-        await device.port.close();
-      } catch { /* already closed */ }
+      try { await device.port.close() } catch { /* already closed */ }
     }
     if (device?.type === "bluetooth" && device.btDevice) {
       device.btDevice.gatt?.disconnect();
     }
     setDevice(null);
     setStatus("disconnected");
-  }, [device]);
+    await refreshSavedPorts();
+  }, [device, refreshSavedPorts]);
 
   const print = useCallback(async (data: Uint8Array) => {
     if (!device || status !== "connected") throw new Error("Printer not connected");
@@ -191,7 +220,6 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
     }
 
     if (device.type === "bluetooth" && device.btCharacteristic) {
-      // BLE needs chunking
       const CHUNK = 20;
       for (let i = 0; i < data.length; i += CHUNK) {
         const chunk = data.slice(i, i + CHUNK);
@@ -206,7 +234,10 @@ export function PrinterProvider({ children }: { children: ReactNode }) {
   }, [device, status]);
 
   return (
-    <PrinterContext.Provider value={{ device, status, connectUSB, connectBluetooth, disconnect, print, isSupported }}>
+    <PrinterContext.Provider value={{
+      device, status, savedPorts, refreshSavedPorts,
+      connectUSB, connectPort, connectBluetooth, disconnect, print, isSupported,
+    }}>
       {children}
     </PrinterContext.Provider>
   );

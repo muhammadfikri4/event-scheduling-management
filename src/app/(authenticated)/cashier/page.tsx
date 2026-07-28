@@ -13,6 +13,7 @@ import { CurrencyInput } from "@/components/currency-input";
 import { toast } from "sonner";
 import Image from "next/image";
 import { ReceiptView } from "@/components/receipt-view";
+import { usePrinter } from "@/lib/printer";
 
 interface Product {
   id: string; name: string; sku: string; unit: string;
@@ -34,6 +35,7 @@ interface Sale {
 }
 
 export default function CashierPage() {
+  const printer = usePrinter();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
@@ -135,7 +137,62 @@ export default function CashierPage() {
 
   function formatRp(n: number) { return `Rp ${n.toLocaleString("id-ID")}` }
 
-  function handlePrint() {
+  async function handlePrint() {
+    // If device printer connected, send ESC/POS directly
+    if (printer.status === "connected" && lastSale) {
+      try {
+        const enc = new TextEncoder();
+        const lines: (Uint8Array | string)[] = [];
+
+        lines.push(new Uint8Array([0x1B, 0x40]));                 // initialize
+        lines.push(new Uint8Array([0x1B, 0x61, 0x01]));           // center
+        lines.push(new Uint8Array([0x1B, 0x45, 0x01]));           // bold on
+        lines.push("NOTA PENJUALAN\n");
+        lines.push(new Uint8Array([0x1B, 0x45, 0x00]));           // bold off
+        lines.push(`${lastSale.invoiceNumber}\n`);
+        lines.push(`${new Date(lastSale.createdAt).toLocaleString("id-ID")}\n`);
+        lines.push("================================\n");
+        lines.push(new Uint8Array([0x1B, 0x61, 0x00]));           // left align
+
+        for (const item of lastSale.items) {
+          const name = item.product.name + (item.size ? ` (${item.size})` : "");
+          lines.push(`${name}\n`);
+          lines.push(`  ${item.quantity} x Rp ${item.price.toLocaleString("id-ID")}`.padEnd(24) + `Rp ${item.subtotal.toLocaleString("id-ID")}\n`);
+        }
+
+        lines.push("--------------------------------\n");
+        lines.push(new Uint8Array([0x1B, 0x45, 0x01]));           // bold
+        lines.push(`TOTAL`.padEnd(24) + `Rp ${lastSale.totalAmount.toLocaleString("id-ID")}\n`);
+        lines.push(new Uint8Array([0x1B, 0x45, 0x00]));           // bold off
+        lines.push(`Bayar`.padEnd(24) + `Rp ${lastSale.paidAmount.toLocaleString("id-ID")}\n`);
+        lines.push(`Kembali`.padEnd(24) + `Rp ${lastSale.changeAmount.toLocaleString("id-ID")}\n`);
+
+        if (lastSale.note) {
+          lines.push("--------------------------------\n");
+          lines.push(`Catatan: ${lastSale.note}\n`);
+        }
+
+        lines.push("================================\n");
+        lines.push(new Uint8Array([0x1B, 0x61, 0x01]));           // center
+        lines.push("Terima Kasih!\n\n\n\n");
+        lines.push(new Uint8Array([0x1D, 0x56, 0x00]));           // cut
+
+        // Merge all into single Uint8Array
+        const parts = lines.map((l) => typeof l === "string" ? enc.encode(l) : l);
+        const total = parts.reduce((s, p) => s + p.length, 0);
+        const data = new Uint8Array(total);
+        let offset = 0;
+        for (const p of parts) { data.set(p, offset); offset += p.length; }
+
+        await printer.print(data);
+        toast.success("Nota berhasil dicetak!");
+        return;
+      } catch {
+        toast.error("Gagal cetak ke printer, menggunakan print dialog");
+      }
+    }
+
+    // Fallback: window.print
     if (!receiptRef.current) return;
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) return;
@@ -323,7 +380,10 @@ export default function CashierPage() {
 
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setSuccessOpen(false)}>Transaksi Baru</Button>
-            <Button className="flex-1" onClick={handlePrint}><Printer className="w-4 h-4" /> Cetak Nota</Button>
+            <Button className="flex-1" onClick={handlePrint}>
+              <Printer className="w-4 h-4" />
+              {printer.status === "connected" ? `Cetak (${printer.device?.name})` : "Cetak Nota"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
