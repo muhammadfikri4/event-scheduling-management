@@ -77,7 +77,10 @@ export const ReceiptView = forwardRef<HTMLDivElement, { sale: ReceiptData }>(
           <p className="text-[10px]">{dateStr}</p>
         </div>
 
-        {/* 3. Nama pembeli */}
+        {/* Kasir & Pembeli */}
+        {sale.cashierName && (
+          <p className="text-[10px]">Kasir: {sale.cashierName}</p>
+        )}
         {sale.customerName && (
           <p className="text-[10px]">Pembeli: {sale.customerName}</p>
         )}
@@ -136,16 +139,13 @@ export const ReceiptView = forwardRef<HTMLDivElement, { sale: ReceiptData }>(
 
         <div className="border-t border-dashed border-black my-1" />
 
-        {/* 2. Nama kasir */}
-        {sale.cashierName && (
-          <p className="text-[10px]">Kasir: {sale.cashierName}</p>
-        )}
-
         {sale.note && (
           <p className="text-[10px]">Catatan: {sale.note}</p>
         )}
 
         <div className="border-t border-dashed border-black my-1" />
+
+        <p className="text-center text-[10px] font-bold my-1">ELEVATE INDONESIAN RESCUER</p>
 
         {/* 6. Ucapan terima kasih */}
         <p className="text-center text-[10px] italic my-1">

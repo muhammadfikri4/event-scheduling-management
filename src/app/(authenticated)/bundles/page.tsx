@@ -137,15 +137,14 @@ export default function BundlesPage() {
       </div>
 
       <Card>
-        {fetchLoading ? <TableSkeleton columns={7} /> : <Table>
+        {fetchLoading ? <TableSkeleton columns={6} /> : <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-14">Foto</TableHead>
               <TableHead>Kode</TableHead>
               <TableHead>Nama Bundling</TableHead>
-              <TableHead>Isi</TableHead>
+              <TableHead>Isi (Produk · Stok)</TableHead>
               <TableHead className="text-right">Harga</TableHead>
-              <TableHead className="text-right">Stok</TableHead>
               <TableHead className="text-right w-24">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -166,24 +165,26 @@ export default function BundlesPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
-                    {b.items.map((i) => (
-                      <span key={i.id} className="text-[10px] bg-muted px-1.5 py-0.5 rounded">
-                        {i.quantity}x {i.product.name}{i.size ? ` (${i.size})` : ""}
-                      </span>
-                    ))}
+                    {b.items.map((i) => {
+                      const stock = i.product.isClothing && i.size
+                        ? (i.product as Product).sizeStocks?.find((s) => s.size === i.size)?.stock ?? 0
+                        : i.product.stock;
+                      return (
+                        <span key={i.id} className={`text-[10px] px-1.5 py-0.5 rounded ${stock > 0 ? "bg-muted" : "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400"}`}>
+                          {i.quantity}x {i.product.name}{i.size ? ` (${i.size})` : ""} · <span className="font-semibold">{stock}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-semibold">{formatRp(b.price)}</TableCell>
-                <TableCell className="text-right">
-                  <Badge variant={bundleStock(b) > 0 ? "default" : "destructive"}>{bundleStock(b)}</Badge>
-                </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)}><Pencil className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(b.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </TableCell>
               </TableRow>
             ))}
-            {bundles.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Belum ada bundling</TableCell></TableRow>}
+            {bundles.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Belum ada bundling</TableCell></TableRow>}
           </TableBody>
         </Table>}
       </Card>
