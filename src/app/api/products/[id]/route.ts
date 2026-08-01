@@ -7,6 +7,29 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await request.json();
+  const sizes: string[] = body.isClothing && body.sizes ? JSON.parse(body.sizes) : [];
+
+  // Sync sizeStocks: delete removed sizes, upsert current sizes
+  if (body.isClothing !== undefined) {
+    if (body.isClothing && sizes.length > 0) {
+      // Delete sizes that are no longer in the list
+      await prisma.productSizeStock.deleteMany({
+        where: { productId: id, size: { notIn: sizes } },
+      });
+      // Upsert each size (keep existing stock, create new with 0)
+      for (const size of sizes) {
+        await prisma.productSizeStock.upsert({
+          where: { productId_size: { productId: id, size } },
+          update: {},
+          create: { productId: id, size, stock: 0 },
+        });
+      }
+    } else {
+      // Not clothing anymore — remove all sizeStocks
+      await prisma.productSizeStock.deleteMany({ where: { productId: id } });
+    }
+  }
+
   const product = await prisma.product.update({
     where: { id },
     data: {
@@ -19,6 +42,7 @@ export async function PUT(
       isClothing: body.isClothing,
       sizes: body.sizes,
     },
+    include: { sizeStocks: { orderBy: { size: "asc" } } },
   });
   return NextResponse.json(product);
 }
