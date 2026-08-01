@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  Calendar,
   Users,
   Trophy,
   Clock,
@@ -15,6 +14,7 @@ import {
   Package,
   PackagePlus,
   PackageMinus,
+  PackageOpen,
   StickyNote,
   ShoppingCart,
   Receipt,
@@ -45,6 +45,7 @@ const navGroups: NavGroup[] = [
       { href: "/cashier", label: "Kasir", icon: ShoppingCart },
       { href: "/sales", label: "Penjualan", icon: Receipt },
       { href: "/products", label: "Produk / Item", icon: Package },
+      { href: "/bundles", label: "Bundling", icon: PackageOpen },
       { href: "/stock-in", label: "Barang Masuk", icon: PackagePlus },
       { href: "/stock-out", label: "Barang Keluar", icon: PackageMinus },
     ],
@@ -78,16 +79,9 @@ function PrinterStatus() {
 function NavContent({ pathname, onLogout }: { pathname: string; onLogout: () => void }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-            <Calendar className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div className="leading-tight">
-            <p className="font-semibold text-sm">Event Scheduling</p>
-            <p className="text-xs text-muted-foreground">Management</p>
-          </div>
-        </div>
+      <div className="px-4 py-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={process.env.NEXT_PUBLIC_LOGO || "/imerc-logo.png"} alt="IMERC 2026" className="h-10 w-auto" />
       </div>
       <Separator />
       <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
@@ -149,11 +143,9 @@ export function Sidebar() {
             <NavContent pathname={pathname} onLogout={handleLogout} />
           </SheetContent>
         </Sheet>
-        <div className="flex items-center gap-2 ml-2">
-          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-            <Calendar className="w-3.5 h-3.5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-sm">Event Scheduling</span>
+        <div className="ml-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={process.env.NEXT_PUBLIC_LOGO || "/imerc-logo.png"} alt="IMERC 2026" className="h-8 w-auto" />
         </div>
       </div>
 

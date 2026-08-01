@@ -10,8 +10,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Event Scheduling Management",
-  description: "Competition scheduling and team management system",
+  title: "IMERC 2026",
+  description: "Indonesia Mining Emergency Response Community",
 };
 
 export default function RootLayout({

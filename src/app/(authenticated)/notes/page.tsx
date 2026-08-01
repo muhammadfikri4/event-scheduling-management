@@ -23,6 +23,7 @@ export default function NotesPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
@@ -33,7 +34,9 @@ export default function NotesPage() {
   useEffect(() => { fetchNotes() }, [dateStr]);
 
   async function fetchNotes() {
+    setFetchLoading(true);
     setNotes(await fetch(`/api/notes?eventDate=${dateStr}`).then((r) => r.json()));
+    setFetchLoading(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -103,7 +106,19 @@ export default function NotesPage() {
       </div>
 
       {/* Notes List */}
-      {notes.length === 0 ? (
+      {fetchLoading ? (
+        <div className="space-y-2 animate-pulse">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-16 bg-muted rounded" />
+                <div className="h-4 w-32 bg-muted rounded" />
+              </div>
+              <div className="h-3 w-3/4 bg-muted/60 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : notes.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <StickyNote className="w-10 h-10 mb-2 opacity-30" />
           <p className="text-sm">Belum ada catatan untuk tanggal ini</p>

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   const [sales, total] = await Promise.all([
     prisma.sale.findMany({
-      include: { items: { include: { product: true } } },
+      include: { items: { include: { product: true, bundle: true } } },
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
@@ -42,12 +42,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Keranjang kosong" }, { status: 400 });
   }
 
-  // Build all sale items (regular + expanded bundles)
-  const saleItems: { productId: string; quantity: number; price: number; size: string | null; subtotal: number; label?: string }[] = [];
+  // Build sale item records for DB
+  const saleItemsData: { productId?: string; bundleId?: string; quantity: number; price: number; size: string | null; subtotal: number }[] = [];
 
   // Regular items
   for (const item of items) {
-    saleItems.push({
+    saleItemsData.push({
       productId: item.productId,
       quantity: item.quantity,
       price: item.price,
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
     });
   }
 
-  // Bundle items — expand for stock decrement, but record as bundle line on receipt
-  const bundleLines: { name: string; quantity: number; price: number; subtotal: number; bundleItems: { productId: string; quantity: number; size: string | null }[] }[] = [];
+  // Bundle items — record as bundleId reference, expand for stock decrement
+  const bundleLines: { bundleItems: { productId: string; quantity: number; size: string | null }[]; quantity: number }[] = [];
 
   for (const b of bundles) {
     const bundle = await prisma.bundle.findUnique({
@@ -67,25 +67,20 @@ export async function POST(request: Request) {
     if (!bundle) return NextResponse.json({ error: "Bundling tidak ditemukan" }, { status: 400 });
 
     bundleLines.push({
-      name: bundle.name,
       quantity: b.quantity,
-      price: b.price,
-      subtotal: b.price * b.quantity,
       bundleItems: bundle.items.map((bi) => ({ productId: bi.productId, quantity: bi.quantity, size: bi.size })),
     });
 
-    // Add bundle as a single sale item line (using first product as reference)
-    saleItems.push({
-      productId: bundle.items[0].productId,
+    saleItemsData.push({
+      bundleId: bundle.id,
       quantity: b.quantity,
       price: b.price,
       size: null,
       subtotal: b.price * b.quantity,
-      label: bundle.name,
     });
   }
 
-  const subtotalAmount = saleItems.reduce((sum, item) => sum + item.subtotal, 0);
+  const subtotalAmount = saleItemsData.reduce((sum, item) => sum + item.subtotal, 0);
 
   // Calculate discount
   let discountAmount = 0;
@@ -151,8 +146,9 @@ export async function POST(request: Request) {
         note: note || null,
         createdBy: session.userId,
         items: {
-          create: saleItems.map((item) => ({
-            productId: item.productId,
+          create: saleItemsData.map((item) => ({
+            productId: item.productId || null,
+            bundleId: item.bundleId || null,
             quantity: item.quantity,
             price: item.price,
             size: item.size,
@@ -160,7 +156,7 @@ export async function POST(request: Request) {
           })),
         },
       },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: { product: true, bundle: true } } },
     });
 
     // Decrement stock — regular items

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, LogIn, Loader2 } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,13 +45,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary text-primary-foreground">
-            <Calendar className="w-6 h-6" />
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">Event Scheduling</h1>
+        <div className="text-center space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={process.env.NEXT_PUBLIC_LOGO || "/imerc-logo.png"} alt="IMERC 2026" className="h-14 w-auto mx-auto" />
           <p className="text-sm text-muted-foreground">
-            Masuk untuk mengelola jadwal pertandingan
+            Masuk untuk mengelola sistem
           </p>
         </div>
 

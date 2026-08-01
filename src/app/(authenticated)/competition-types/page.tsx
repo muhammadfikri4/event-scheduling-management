@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Image from "next/image";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 interface CompetitionType { id: string; name: string; code: string; color: string; logo: string | null }
 
@@ -18,6 +19,7 @@ export default function CompetitionTypesPage() {
   const [types, setTypes] = useState<CompetitionType[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -27,7 +29,11 @@ export default function CompetitionTypesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchTypes() }, []);
-  async function fetchTypes() { setTypes(await fetch("/api/competition-types").then((r) => r.json())) }
+  async function fetchTypes() {
+    setFetchLoading(true);
+    setTypes(await fetch("/api/competition-types").then((r) => r.json()));
+    setFetchLoading(false);
+  }
 
   async function handleUpload(file: File) {
     setUploading(true);
@@ -75,7 +81,7 @@ export default function CompetitionTypesPage() {
       </div>
 
       <Card>
-        <Table>
+        {fetchLoading ? <TableSkeleton columns={4} /> : <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-16">Logo</TableHead>
@@ -104,7 +110,7 @@ export default function CompetitionTypesPage() {
             ))}
             {types.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
           </TableBody>
-        </Table>
+        </Table>}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

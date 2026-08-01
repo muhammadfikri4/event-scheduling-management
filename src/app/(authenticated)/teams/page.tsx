@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Image from "next/image";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 interface TeamMember { id?: string; name: string }
 interface Team {
@@ -22,6 +23,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#3B82F6");
@@ -34,7 +36,11 @@ export default function TeamsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchTeams() }, []);
-  async function fetchTeams() { setTeams(await fetch("/api/teams").then((r) => r.json())) }
+  async function fetchTeams() {
+    setFetchLoading(true);
+    setTeams(await fetch("/api/teams").then((r) => r.json()));
+    setFetchLoading(false);
+  }
 
   async function handleUpload(file: File) {
     setUploading(true);
@@ -111,7 +117,7 @@ export default function TeamsPage() {
       </div>
 
       <Card>
-        <Table>
+        {fetchLoading ? <TableSkeleton columns={5} /> : <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-16">Logo</TableHead>
@@ -151,7 +157,7 @@ export default function TeamsPage() {
             ))}
             {teams.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada data tim</TableCell></TableRow>}
           </TableBody>
-        </Table>
+        </Table>}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

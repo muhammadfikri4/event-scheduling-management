@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 interface TimeSlot { id: string; startTime: string; endTime: string; order: number }
 
@@ -16,13 +17,18 @@ export default function TimeSlotsPage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [order, setOrder] = useState(0);
 
   useEffect(() => { fetchSlots() }, []);
-  async function fetchSlots() { setSlots(await fetch("/api/time-slots").then((r) => r.json())) }
+  async function fetchSlots() {
+    setFetchLoading(true);
+    setSlots(await fetch("/api/time-slots").then((r) => r.json()));
+    setFetchLoading(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +63,7 @@ export default function TimeSlotsPage() {
       </div>
 
       <Card>
-        <Table>
+        {fetchLoading ? <TableSkeleton columns={5} /> : <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-16">#</TableHead>
@@ -82,7 +88,7 @@ export default function TimeSlotsPage() {
             ))}
             {slots.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
           </TableBody>
-        </Table>
+        </Table>}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

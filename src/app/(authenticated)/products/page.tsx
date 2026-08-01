@@ -12,11 +12,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { CurrencyInput } from "@/components/currency-input";
 import Image from "next/image";
+import { TableSkeleton } from "@/components/table-skeleton";
 
+interface SizeStock { id: string; size: string; stock: number }
 interface Product {
   id: string; name: string; sku: string; unit: string;
   stock: number; price: number; description: string | null;
   image: string | null; isClothing: boolean; sizes: string | null;
+  sizeStocks: SizeStock[];
 }
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL"];
@@ -25,6 +28,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -34,7 +38,11 @@ export default function ProductsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchProducts() }, []);
-  async function fetchProducts() { setProducts(await fetch("/api/products").then((r) => r.json())) }
+  async function fetchProducts() {
+    setFetchLoading(true);
+    setProducts(await fetch("/api/products").then((r) => r.json()));
+    setFetchLoading(false);
+  }
 
   async function handleUpload(file: File) {
     setUploading(true);
@@ -101,7 +109,7 @@ export default function ProductsPage() {
       </div>
 
       <Card>
-        <Table>
+        {fetchLoading ? <TableSkeleton columns={7} /> : <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-14">Foto</TableHead>
@@ -139,7 +147,17 @@ export default function ProductsPage() {
                 <TableCell>{p.unit}</TableCell>
                 <TableCell className="text-right">Rp {p.price.toLocaleString("id-ID")}</TableCell>
                 <TableCell className="text-right">
-                  <Badge variant={p.stock > 0 ? "default" : "destructive"}>{p.stock}</Badge>
+                  {p.isClothing && p.sizeStocks.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 justify-end">
+                      {p.sizeStocks.map((ss) => (
+                        <span key={ss.size} className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ss.stock > 0 ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400"}`}>
+                          {ss.size}:{ss.stock}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <Badge variant={p.stock > 0 ? "default" : "destructive"}>{p.stock}</Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -149,7 +167,7 @@ export default function ProductsPage() {
             ))}
             {products.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Belum ada data produk</TableCell></TableRow>}
           </TableBody>
-        </Table>
+        </Table>}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

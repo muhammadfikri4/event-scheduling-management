@@ -7,6 +7,9 @@ import {
   Eye,
   Maximize,
   Minimize,
+  Megaphone,
+  Clock,
+  RefreshCw,
 } from "lucide-react";
 import {
   format,
@@ -42,6 +45,8 @@ interface Schedule {
   team: Team; competitionType: CompetitionType; timeSlot: TimeSlot;
 }
 
+interface Note { id: string; eventDate: string; time: string; title: string; content: string | null }
+
 type ViewMode = "day" | "week" | "month" | "year" | "grid";
 
 const VIEW_LABELS: Record<ViewMode, string> = {
@@ -63,6 +68,18 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [detail, setDetail] = useState<Schedule | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([fetchData(), fetchSchedules()]);
+    if (viewMode === "grid" || viewMode === "day") {
+      const n = await fetch(`/api/notes?eventDate=${format(selectedDate, "yyyy-MM-dd")}`).then((r) => r.json());
+      setNotes(n);
+    }
+    setRefreshing(false);
+  }
 
   const fetchData = useCallback(async () => {
     const [t, s] = await Promise.all([
@@ -92,6 +109,14 @@ export default function DashboardPage() {
   }, [selectedDate, viewMode]);
 
   useEffect(() => { fetchSchedules() }, [fetchSchedules]);
+
+  // Fetch notes for selected date (grid/day view)
+  useEffect(() => {
+    if (viewMode === "grid" || viewMode === "day") {
+      fetch(`/api/notes?eventDate=${format(selectedDate, "yyyy-MM-dd")}`)
+        .then((r) => r.json()).then(setNotes);
+    }
+  }, [selectedDate, viewMode]);
 
   // Real-time: listen via socket.io
   useEffect(() => {
@@ -167,7 +192,10 @@ export default function DashboardPage() {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(1)}><ChevronRight className="w-4 h-4" /></Button>
           </div>
           <span className="text-sm font-medium capitalize">{getDateLabel()}</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto sm:ml-1" onClick={() => setFullscreen((f) => !f)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto sm:ml-1" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFullscreen((f) => !f)}>
             {fullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </Button>
         </div>
@@ -392,6 +420,30 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── BROADCAST / CATATAN ── */}
+      {(viewMode === "grid" || viewMode === "day") && notes.length > 0 && (
+        <div className="border-t px-4 lg:px-6 py-3 shrink-0 max-h-48 overflow-y-auto">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Megaphone className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pengumuman</span>
+          </div>
+          <div className="space-y-2">
+            {notes.map((note) => (
+              <div key={note.id} className="flex gap-3 text-sm">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 w-14">
+                  <Clock className="w-3 h-3" />
+                  <span>{note.time}</span>
+                </div>
+                <div className="border-l-2 border-primary/30 pl-3 flex-1 min-w-0">
+                  <p className="font-medium text-sm">{note.title}</p>
+                  {note.content && <p className="text-xs text-muted-foreground mt-0.5">{note.content}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── FOOTER LEGEND ── */}
       <footer className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-2.5 border-t text-xs shrink-0">
