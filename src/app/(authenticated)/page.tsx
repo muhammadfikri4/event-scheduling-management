@@ -10,6 +10,7 @@ import {
   Megaphone,
   Clock,
   RefreshCw,
+  Link2,
 } from "lucide-react";
 import {
   format,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface Team { id: string; name: string; color: string; logo: string | null }
 interface CompetitionType { id: string; name: string; code: string; color: string; logo: string | null }
@@ -172,7 +174,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={fullscreen ? "fixed inset-0 z-50 bg-background flex flex-col" : "flex flex-col flex-1"}>
+    <div className={fullscreen ? "fixed inset-0 z-50 bg-background flex flex-col" : "flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen"}>
       {/* ── HEADER ── */}
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 lg:px-6 py-3 border-b shrink-0">
         <h1 className="text-base font-semibold tracking-tight">Dashboard Jadwal</h1>
@@ -192,7 +194,13 @@ export default function DashboardPage() {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(1)}><ChevronRight className="w-4 h-4" /></Button>
           </div>
           <span className="text-sm font-medium capitalize">{getDateLabel()}</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto sm:ml-1" onClick={handleRefresh} disabled={refreshing}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto sm:ml-1" onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/live`);
+            toast.success("Link public berhasil disalin");
+          }} title="Copy public link">
+            <Link2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFullscreen((f) => !f)}>
@@ -202,6 +210,7 @@ export default function DashboardPage() {
       </header>
 
       {/* ── BODY ── */}
+      <div className="flex-1 flex min-h-0">
       <div className="flex-1 overflow-auto relative">
 
         {/* ──── GRID ──── */}
@@ -421,29 +430,28 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── BROADCAST / CATATAN ── */}
+      {/* ── BROADCAST / CATATAN (Right Sidebar) ── */}
       {(viewMode === "grid" || viewMode === "day") && notes.length > 0 && (
-        <div className="border-t px-4 lg:px-6 py-3 shrink-0 max-h-48 overflow-y-auto">
-          <div className="flex items-center gap-1.5 mb-2">
+        <div className="hidden lg:flex w-64 border-l flex-col shrink-0">
+          <div className="flex items-center gap-1.5 px-4 py-3 border-b">
             <Megaphone className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pengumuman</span>
           </div>
-          <div className="space-y-2">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {notes.map((note) => (
-              <div key={note.id} className="flex gap-3 text-sm">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 w-14">
+              <div key={note.id} className="text-sm">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
                   <Clock className="w-3 h-3" />
                   <span>{note.time}</span>
                 </div>
-                <div className="border-l-2 border-primary/30 pl-3 flex-1 min-w-0">
-                  <p className="font-medium text-sm">{note.title}</p>
-                  {note.content && <p className="text-xs text-muted-foreground mt-0.5">{note.content}</p>}
-                </div>
+                <p className="font-medium text-sm">{note.title}</p>
+                {note.content && <p className="text-xs text-muted-foreground mt-0.5">{note.content}</p>}
               </div>
             ))}
           </div>
         </div>
       )}
+      </div>
 
       {/* ── FOOTER LEGEND ── */}
       <footer className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-2.5 border-t text-xs shrink-0">

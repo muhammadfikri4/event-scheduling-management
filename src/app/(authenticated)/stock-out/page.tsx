@@ -20,7 +20,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 interface SizeStock { size: string; stock: number }
 interface Product { id: string; name: string; sku: string; unit: string; stock: number; image: string | null; isClothing: boolean; sizes: string | null; sizeStocks: SizeStock[] }
 interface Transaction { id: string; productId: string; type: string; quantity: number; note: string | null; size: string | null; pic: string | null; createdByName: string | null; createdAt: string; product: Product }
-interface Recap { date: string; count: number; totalQty: number }
+interface Recap { date: string; count: number; totalQty: number; totalValue: number }
 
 export default function StockOutPage() {
   const [tab, setTab] = useState<"list" | "recap">("list");
@@ -139,32 +139,51 @@ export default function StockOutPage() {
           </Table>}
         </Card>
       ) : (
-        <Card>
-          {fetchLoading ? <TableSkeleton columns={3} /> : <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead className="text-center">Transaksi</TableHead>
-                <TableHead className="text-right">Total Item Keluar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recap.map((r) => (
-                <TableRow key={r.date}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium">{format(new Date(r.date + "T00:00:00"), "EEEE, d MMM yyyy", { locale: localeId })}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center"><Badge variant="secondary">{r.count}</Badge></TableCell>
-                  <TableCell className="text-right font-semibold text-red-600">-{r.totalQty}</TableCell>
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Total Transaksi</p>
+              <p className="text-2xl font-bold">{recap.reduce((s, r) => s + r.count, 0)}</p>
+            </Card>
+            <Card className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Total Item Keluar</p>
+              <p className="text-2xl font-bold text-red-600">{recap.reduce((s, r) => s + r.totalQty, 0)}</p>
+            </Card>
+            <Card className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Total Nilai</p>
+              <p className="text-2xl font-bold">Rp {recap.reduce((s, r) => s + r.totalValue, 0).toLocaleString("id-ID")}</p>
+            </Card>
+          </div>
+
+          <Card>
+            {fetchLoading ? <TableSkeleton columns={4} /> : <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead className="text-center">Transaksi</TableHead>
+                  <TableHead className="text-right">Item Keluar</TableHead>
+                  <TableHead className="text-right">Nilai</TableHead>
                 </TableRow>
-              ))}
-              {recap.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
-            </TableBody>
-          </Table>}
-        </Card>
+              </TableHeader>
+              <TableBody>
+                {recap.map((r) => (
+                  <TableRow key={r.date}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">{format(new Date(r.date + "T00:00:00"), "EEEE, d MMM yyyy", { locale: localeId })}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{r.count}</Badge></TableCell>
+                    <TableCell className="text-right font-semibold text-red-600">-{r.totalQty}</TableCell>
+                    <TableCell className="text-right font-semibold">Rp {r.totalValue.toLocaleString("id-ID")}</TableCell>
+                  </TableRow>
+                ))}
+                {recap.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
+              </TableBody>
+            </Table>}
+          </Card>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

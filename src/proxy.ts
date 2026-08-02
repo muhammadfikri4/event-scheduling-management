@@ -6,7 +6,7 @@ const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "default-secret-change-me"
 );
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/live", "/api/schedules", "/api/competition-types", "/api/time-slots", "/api/notes"];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

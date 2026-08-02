@@ -12,21 +12,23 @@ export async function GET(request: NextRequest) {
       type: true,
       quantity: true,
       createdAt: true,
-      product: { select: { unit: true } },
+      product: { select: { unit: true, price: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  const recapMap = new Map<string, { date: string; count: number; totalQty: number }>();
+  const recapMap = new Map<string, { date: string; count: number; totalQty: number; totalValue: number }>();
 
   for (const t of transactions) {
     const date = t.createdAt.toISOString().split("T")[0];
+    const value = t.quantity * t.product.price;
     const existing = recapMap.get(date);
     if (existing) {
       existing.count++;
       existing.totalQty += t.quantity;
+      existing.totalValue += value;
     } else {
-      recapMap.set(date, { date, count: 1, totalQty: t.quantity });
+      recapMap.set(date, { date, count: 1, totalQty: t.quantity, totalValue: value });
     }
   }
 
