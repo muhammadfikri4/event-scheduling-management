@@ -55,7 +55,7 @@ export const ReceiptView = forwardRef<HTMLDivElement, { sale: ReceiptData }>(
     const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
     return (
-      <div ref={ref} className="receipt-content bg-white text-black p-4 font-mono text-[11px] leading-snug mx-auto" style={{ width: "80mm" }}>
+      <div ref={ref} className="receipt-content bg-white text-black p-3 font-mono text-[10px] leading-snug mx-auto" style={{ width: "57mm" }}>
         {/* 1. Logo IMERC */}
         <div className="text-center mb-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -158,7 +158,7 @@ export const ReceiptView = forwardRef<HTMLDivElement, { sale: ReceiptData }>(
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(process.env.NEXT_PUBLIC_RECEIPT_WEBSITE || "https://grfrn.com")}`}
             alt="QR"
-            className="w-20 h-20 mx-auto"
+            className="w-16 h-16 mx-auto"
           />
           <p className="text-[9px] mt-0.5">{(process.env.NEXT_PUBLIC_RECEIPT_WEBSITE || "https://grfrn.com").replace(/^https?:\/\//, "")}</p>
         </div>

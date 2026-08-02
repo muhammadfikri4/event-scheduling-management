@@ -50,8 +50,8 @@ export default function SalesPage() {
       <html><head><title>Cetak Nota</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: monospace; font-size: 11px; width: 80mm; }
-        @page { size: 80mm auto; margin: 0; }
+        body { font-family: monospace; font-size: 10px; width: 57mm; }
+        @page { size: 57mm auto; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
