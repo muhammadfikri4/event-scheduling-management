@@ -24,6 +24,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!user.isActive) {
+    return NextResponse.json(
+      { error: "Akun tidak aktif, hubungi admin" },
+      { status: 403 }
+    );
+  }
+
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
     return NextResponse.json(
@@ -32,6 +39,6 @@ export async function POST(request: Request) {
     );
   }
 
-  await createSession(user.id, user.username, user.name);
-  return NextResponse.json({ success: true, name: user.name });
+  await createSession(user.id, user.username, user.name, user.role);
+  return NextResponse.json({ success: true, name: user.name, role: user.role });
 }

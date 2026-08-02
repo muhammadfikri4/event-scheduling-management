@@ -1,19 +1,23 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import type { Role } from "@/generated/prisma/client";
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "default-secret-change-me"
 );
 const COOKIE_NAME = "session";
 
+export type { Role };
+
 export interface SessionPayload {
   userId: string;
   username: string;
   name: string;
+  role: Role;
 }
 
-export async function createSession(userId: string, username: string, name: string) {
-  const token = await new SignJWT({ userId, username, name })
+export async function createSession(userId: string, username: string, name: string, role: Role) {
+  const token = await new SignJWT({ userId, username, name, role })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("24h")
     .setIssuedAt()

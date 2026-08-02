@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   Receipt,
   Printer,
+  UserCog,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -27,30 +28,43 @@ import { usePrinter } from "@/lib/printer";
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }> }
 interface NavGroup { title: string; items: NavItem[] }
 
-const navGroups: NavGroup[] = [
-  {
-    title: "Penjadwalan",
-    items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/teams", label: "Tim", icon: Users },
-      { href: "/competition-types", label: "Jenis Lomba", icon: Trophy },
-      { href: "/time-slots", label: "Waktu", icon: Clock },
-      { href: "/schedules", label: "Buat Jadwal", icon: CalendarPlus },
-      { href: "/notes", label: "Catatan", icon: StickyNote },
-    ],
-  },
-  {
-    title: "Point of Sales",
-    items: [
-      { href: "/cashier", label: "Kasir", icon: ShoppingCart },
-      { href: "/sales", label: "Penjualan", icon: Receipt },
-      { href: "/products", label: "Produk / Item", icon: Package },
-      { href: "/bundles", label: "Bundling", icon: PackageOpen },
-      { href: "/stock-in", label: "Barang Masuk", icon: PackagePlus },
-      { href: "/stock-out", label: "Barang Keluar", icon: PackageMinus },
-    ],
-  },
+type Role = "super_admin" | "organizer" | "cashier";
+
+const SCHEDULING_ITEMS: NavItem[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/teams", label: "Tim", icon: Users },
+  { href: "/competition-types", label: "Jenis Lomba", icon: Trophy },
+  { href: "/time-slots", label: "Waktu", icon: Clock },
+  { href: "/schedules", label: "Buat Jadwal", icon: CalendarPlus },
+  { href: "/notes", label: "Catatan", icon: StickyNote },
 ];
+
+const POS_ITEMS: NavItem[] = [
+  { href: "/cashier", label: "Kasir", icon: ShoppingCart },
+  { href: "/sales", label: "Penjualan", icon: Receipt },
+  { href: "/products", label: "Produk / Item", icon: Package },
+  { href: "/bundles", label: "Bundling", icon: PackageOpen },
+  { href: "/stock-in", label: "Barang Masuk", icon: PackagePlus },
+  { href: "/stock-out", label: "Barang Keluar", icon: PackageMinus },
+];
+
+const ADMIN_ITEMS: NavItem[] = [
+  { href: "/users", label: "User Management", icon: UserCog },
+];
+
+function getNavGroups(role: Role): NavGroup[] {
+  const groups: NavGroup[] = [];
+  if (role === "super_admin" || role === "organizer") {
+    groups.push({ title: "Penjadwalan", items: SCHEDULING_ITEMS });
+  }
+  if (role === "super_admin" || role === "cashier") {
+    groups.push({ title: "Point of Sales", items: POS_ITEMS });
+  }
+  if (role === "super_admin") {
+    groups.push({ title: "Admin", items: ADMIN_ITEMS });
+  }
+  return groups;
+}
 
 function PrinterStatus() {
   const { device, status } = usePrinter();
@@ -76,7 +90,8 @@ function PrinterStatus() {
   );
 }
 
-function NavContent({ pathname, onLogout }: { pathname: string; onLogout: () => void }) {
+function NavContent({ pathname, onLogout, role }: { pathname: string; onLogout: () => void; role: Role }) {
+  const navGroups = getNavGroups(role);
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-4">
@@ -121,8 +136,15 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<Role>("cashier");
 
   useEffect(() => { setOpen(false) }, [pathname]);
+
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.json()).then((data) => {
+      if (data.role) setRole(data.role as Role);
+    });
+  }, []);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -140,7 +162,7 @@ export function Sidebar() {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
-            <NavContent pathname={pathname} onLogout={handleLogout} />
+            <NavContent pathname={pathname} onLogout={handleLogout} role={role} />
           </SheetContent>
         </Sheet>
         <div className="ml-2">
@@ -151,7 +173,7 @@ export function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-60 border-r bg-background flex-col z-10">
-        <NavContent pathname={pathname} onLogout={handleLogout} />
+        <NavContent pathname={pathname} onLogout={handleLogout} role={role} />
       </aside>
     </>
   );
