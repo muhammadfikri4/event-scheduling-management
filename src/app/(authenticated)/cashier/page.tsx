@@ -240,20 +240,20 @@ export default function CashierPage() {
         for (const item of lastSale.items) {
           const name = (item.bundle?.name || item.product?.name || "—") + (item.size ? ` (${item.size})` : "");
           lines.push(`${name}\n`);
-          lines.push(`  ${item.quantity} x Rp ${item.price.toLocaleString("id-ID")}`.padEnd(18) + `Rp ${item.subtotal.toLocaleString("id-ID")}\n`);
+          lines.push(`  ${item.quantity} x Rp ${item.price.toLocaleString("id-ID")}`.padEnd(24) + `Rp ${item.subtotal.toLocaleString("id-ID")}\n`);
         }
 
         lines.push("--------------------------------\n");
-        lines.push(`Sub Total`.padEnd(18) + `Rp ${lastSale.subtotalAmount.toLocaleString("id-ID")}\n`);
+        lines.push(`Sub Total`.padEnd(24) + `Rp ${lastSale.subtotalAmount.toLocaleString("id-ID")}\n`);
         if (lastSale.discountAmount > 0) {
           const discLabel = lastSale.discountType === "percent" ? `Diskon (${lastSale.discountValue}%)` : "Diskon";
-          lines.push(`${discLabel}`.padEnd(18) + `-Rp ${lastSale.discountAmount.toLocaleString("id-ID")}\n`);
+          lines.push(`${discLabel}`.padEnd(24) + `-Rp ${lastSale.discountAmount.toLocaleString("id-ID")}\n`);
         }
         lines.push(new Uint8Array([0x1B, 0x45, 0x01]));           // bold
-        lines.push(`TOTAL`.padEnd(18) + `Rp ${lastSale.totalAmount.toLocaleString("id-ID")}\n`);
+        lines.push(`TOTAL`.padEnd(24) + `Rp ${lastSale.totalAmount.toLocaleString("id-ID")}\n`);
         lines.push(new Uint8Array([0x1B, 0x45, 0x00]));           // bold off
-        lines.push(`Bayar`.padEnd(18) + `Rp ${lastSale.paidAmount.toLocaleString("id-ID")}\n`);
-        lines.push(`Kembali`.padEnd(18) + `Rp ${lastSale.changeAmount.toLocaleString("id-ID")}\n`);
+        lines.push(`Bayar`.padEnd(24) + `Rp ${lastSale.paidAmount.toLocaleString("id-ID")}\n`);
+        lines.push(`Kembali`.padEnd(24) + `Rp ${lastSale.changeAmount.toLocaleString("id-ID")}\n`);
 
         lines.push("--------------------------------\n");
         if (lastSale.cashierName) lines.push(`Kasir: ${lastSale.cashierName}\n`);
@@ -287,8 +287,8 @@ export default function CashierPage() {
       <html><head><title>Cetak Nota</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: monospace; font-size: 10px; width: 57mm; }
-        @page { size: 57mm auto; margin: 0; }
+        body { font-family: monospace; font-size: 11px; width: 80mm; }
+        @page { size: 80mm auto; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
