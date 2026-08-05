@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRef } from "react";
-import { Search, Plus, Minus, Trash2, ShoppingCart, Loader2, CheckCircle, Shirt, Printer, PackageOpen } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, Loader2, CheckCircle, Shirt, Printer, PackageOpen, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,9 @@ interface CartItem {
   product: Product;
   quantity: number;
   size: string | null;
-  bundle?: Bundle; // if this cart item came from a bundle
+  bundle?: Bundle;
+  itemDiscountType?: "percent" | "nominal";
+  itemDiscountValue?: number;
 }
 
 interface Sale {
@@ -60,6 +62,9 @@ export default function CashierPage() {
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [sizePickerProduct, setSizePickerProduct] = useState<Product | null>(null);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [itemDiscountIdx, setItemDiscountIdx] = useState<number | null>(null);
+  const [itemDiscType, setItemDiscType] = useState<"percent" | "nominal">("percent");
+  const [itemDiscValue, setItemDiscValue] = useState(0);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchProducts(); fetchBundles() }, []);
@@ -73,7 +78,19 @@ export default function CashierPage() {
     b.name.toLowerCase().includes(search.toLowerCase()) || b.sku.toLowerCase().includes(search.toLowerCase())
   );
 
-  const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  function getItemTotal(item: CartItem): number {
+    const baseTotal = item.product.price * item.quantity;
+    if (!item.itemDiscountValue || item.itemDiscountValue <= 0) return baseTotal;
+    if (item.itemDiscountType === "percent") return Math.max(0, baseTotal - Math.round(baseTotal * item.itemDiscountValue / 100));
+    return Math.max(0, baseTotal - item.itemDiscountValue);
+  }
+
+  function getItemDiscountAmount(item: CartItem): number {
+    const baseTotal = item.product.price * item.quantity;
+    return baseTotal - getItemTotal(item);
+  }
+
+  const total = cart.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   function getAvailableStock(product: Product, size: string | null): number {
     if (product.isClothing && size) {
@@ -181,11 +198,15 @@ export default function CashierPage() {
             quantity: c.quantity,
             price: c.product.price,
             size: c.size,
+            itemDiscountType: c.itemDiscountValue ? c.itemDiscountType : undefined,
+            itemDiscountValue: c.itemDiscountValue || undefined,
           })),
           bundles: cart.filter((c) => c.bundle).map((c) => ({
             bundleId: c.bundle!.id,
             quantity: c.quantity,
             price: c.bundle!.price,
+            itemDiscountType: c.itemDiscountValue ? c.itemDiscountType : undefined,
+            itemDiscountValue: c.itemDiscountValue || undefined,
           })),
           paidAmount,
           note: note || undefined,
@@ -424,12 +445,27 @@ export default function CashierPage() {
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <div className="flex items-center border rounded-md">
-                    <button onClick={() => updateQty(i, -1)} className="px-2 py-1 hover:bg-accent transition-colors"><Minus className="w-3 h-3" /></button>
-                    <span className="px-3 text-sm font-medium min-w-[2rem] text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(i, 1)} className="px-2 py-1 hover:bg-accent transition-colors"><Plus className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center border rounded-md">
+                      <button onClick={() => updateQty(i, -1)} className="px-2 py-1 hover:bg-accent transition-colors"><Minus className="w-3 h-3" /></button>
+                      <span className="px-3 text-sm font-medium min-w-[2rem] text-center">{item.quantity}</span>
+                      <button onClick={() => updateQty(i, 1)} className="px-2 py-1 hover:bg-accent transition-colors"><Plus className="w-3 h-3" /></button>
+                    </div>
+                    <button onClick={() => { setItemDiscountIdx(i); setItemDiscType(item.itemDiscountType || "percent"); setItemDiscValue(item.itemDiscountValue || 0) }}
+                      className={`p-1.5 rounded-md transition-colors ${item.itemDiscountValue ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" : "text-muted-foreground hover:bg-accent"}`}>
+                      <Tag className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <span className="font-semibold text-sm">{formatRp(item.product.price * item.quantity)}</span>
+                  <div className="text-right">
+                    {item.itemDiscountValue && item.itemDiscountValue > 0 ? (
+                      <>
+                        <span className="text-xs text-muted-foreground line-through">{formatRp(item.product.price * item.quantity)}</span>
+                        <span className="font-semibold text-sm block text-green-600">{formatRp(getItemTotal(item))}</span>
+                      </>
+                    ) : (
+                      <span className="font-semibold text-sm">{formatRp(item.product.price * item.quantity)}</span>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))
@@ -484,6 +520,51 @@ export default function CashierPage() {
             >
               Tambahkan {selectedSizes.length > 0 ? `(${selectedSizes.length} ukuran)` : ""}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Item Discount Dialog */}
+      <Dialog open={itemDiscountIdx !== null} onOpenChange={() => setItemDiscountIdx(null)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Diskon Item</DialogTitle></DialogHeader>
+          {itemDiscountIdx !== null && cart[itemDiscountIdx] && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{cart[itemDiscountIdx].product.name}{cart[itemDiscountIdx].size ? ` (${cart[itemDiscountIdx].size})` : ""}</p>
+              <p className="text-xs text-muted-foreground">Harga: {formatRp(cart[itemDiscountIdx].product.price)} x {cart[itemDiscountIdx].quantity} = {formatRp(cart[itemDiscountIdx].product.price * cart[itemDiscountIdx].quantity)}</p>
+              <div className="flex gap-2">
+                <div className="inline-flex rounded-md border overflow-hidden shrink-0">
+                  <button type="button" onClick={() => setItemDiscType("percent")}
+                    className={`px-3 py-1.5 text-xs font-medium ${itemDiscType === "percent" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}>%</button>
+                  <button type="button" onClick={() => setItemDiscType("nominal")}
+                    className={`px-3 py-1.5 text-xs font-medium ${itemDiscType === "nominal" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}>Rp</button>
+                </div>
+                {itemDiscType === "nominal" ? (
+                  <CurrencyInput value={itemDiscValue} onChange={setItemDiscValue} />
+                ) : (
+                  <Input type="number" min={0} max={100} value={itemDiscValue || ""} onChange={(e) => setItemDiscValue(Number(e.target.value))} placeholder="0" />
+                )}
+              </div>
+              {itemDiscValue > 0 && (
+                <p className="text-xs text-green-600">
+                  Potongan: -{formatRp(itemDiscType === "percent" ? Math.round(cart[itemDiscountIdx].product.price * cart[itemDiscountIdx].quantity * itemDiscValue / 100) : itemDiscValue)}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            {itemDiscountIdx !== null && cart[itemDiscountIdx]?.itemDiscountValue ? (
+              <Button variant="outline" className="flex-1" onClick={() => {
+                setCart((prev) => prev.map((c, i) => i === itemDiscountIdx ? { ...c, itemDiscountType: undefined, itemDiscountValue: undefined } : c));
+                setItemDiscountIdx(null);
+              }}>Hapus Diskon</Button>
+            ) : null}
+            <Button className="flex-1" onClick={() => {
+              if (itemDiscountIdx !== null) {
+                setCart((prev) => prev.map((c, i) => i === itemDiscountIdx ? { ...c, itemDiscountType: itemDiscType, itemDiscountValue: itemDiscValue > 0 ? itemDiscValue : undefined } : c));
+                setItemDiscountIdx(null);
+              }
+            }}>Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

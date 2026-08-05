@@ -29,8 +29,8 @@ export async function POST(request: Request) {
   const {
     items = [], bundles = [], paidAmount, note, customerName, discountType, discountValue,
   } = body as {
-    items: { productId: string; quantity: number; price: number; size?: string }[];
-    bundles: { bundleId: string; quantity: number; price: number }[];
+    items: { productId: string; quantity: number; price: number; size?: string; itemDiscountType?: "percent" | "nominal"; itemDiscountValue?: number }[];
+    bundles: { bundleId: string; quantity: number; price: number; itemDiscountType?: "percent" | "nominal"; itemDiscountValue?: number }[];
     paidAmount: number;
     note?: string;
     customerName?: string;
@@ -47,12 +47,19 @@ export async function POST(request: Request) {
 
   // Regular items
   for (const item of items) {
+    let subtotal = item.price * item.quantity;
+    if (item.itemDiscountValue && item.itemDiscountValue > 0) {
+      const disc = item.itemDiscountType === "percent"
+        ? Math.round(subtotal * item.itemDiscountValue / 100)
+        : item.itemDiscountValue;
+      subtotal = Math.max(0, subtotal - disc);
+    }
     saleItemsData.push({
       productId: item.productId,
       quantity: item.quantity,
       price: item.price,
       size: item.size || null,
-      subtotal: item.price * item.quantity,
+      subtotal,
     });
   }
 
@@ -71,12 +78,19 @@ export async function POST(request: Request) {
       bundleItems: bundle.items.map((bi) => ({ productId: bi.productId, quantity: bi.quantity, size: bi.size })),
     });
 
+    let bundleSubtotal = b.price * b.quantity;
+    if (b.itemDiscountValue && b.itemDiscountValue > 0) {
+      const disc = b.itemDiscountType === "percent"
+        ? Math.round(bundleSubtotal * b.itemDiscountValue / 100)
+        : b.itemDiscountValue;
+      bundleSubtotal = Math.max(0, bundleSubtotal - disc);
+    }
     saleItemsData.push({
       bundleId: bundle.id,
       quantity: b.quantity,
       price: b.price,
       size: null,
-      subtotal: b.price * b.quantity,
+      subtotal: bundleSubtotal,
     });
   }
 

@@ -93,13 +93,14 @@ export default function SalesPage() {
 
       {tab === "list" ? (
         <Card>
-          {fetchLoading ? <TableSkeleton columns={6} /> : <Table>
+          {fetchLoading ? <TableSkeleton columns={7} /> : <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Invoice</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead className="text-center">Item</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead>Pembeli</TableHead>
                 <TableHead>Kasir</TableHead>
                 <TableHead className="text-right w-24">Aksi</TableHead>
               </TableRow>
@@ -111,6 +112,7 @@ export default function SalesPage() {
                   <TableCell className="text-sm text-muted-foreground">{format(new Date(s.createdAt), "d MMM yyyy, HH:mm", { locale: localeId })}</TableCell>
                   <TableCell className="text-center">{s.items.length}</TableCell>
                   <TableCell className="text-right font-semibold">{formatRp(s.totalAmount)}</TableCell>
+                  <TableCell className="text-sm">{s.customerName || "—"}</TableCell>
                   <TableCell className="text-sm">{s.cashierName || "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetail(s)}><Eye className="w-3.5 h-3.5" /></Button>
@@ -118,7 +120,7 @@ export default function SalesPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {sales.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Belum ada transaksi</TableCell></TableRow>}
+              {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Belum ada transaksi</TableCell></TableRow>}
             </TableBody>
           </Table>}
         </Card>
@@ -137,7 +139,7 @@ export default function SalesPage() {
           </div>
 
           <Card>
-            {fetchLoading ? <TableSkeleton columns={6} /> : <Table>
+            {fetchLoading ? <TableSkeleton columns={7} /> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
@@ -162,7 +164,7 @@ export default function SalesPage() {
                     <TableCell className="text-right font-semibold">{formatRp(r.total)}</TableCell>
                   </TableRow>
                 ))}
-                {recap.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
+                {recap.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Belum ada data</TableCell></TableRow>}
               </TableBody>
             </Table>}
           </Card>
