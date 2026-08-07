@@ -214,7 +214,10 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-auto relative">
 
         {/* ──── GRID ──── */}
-        {viewMode === "grid" && (
+        {viewMode === "grid" && (() => {
+          const activeSlots = slots.filter((slot) => schedules.some((s) => s.timeSlotId === slot.id));
+          const displaySlots = activeSlots.length > 0 ? activeSlots : slots;
+          return (
           <table className="w-full min-w-[600px] text-sm border-collapse">
             <thead className="sticky top-0 z-10">
               <tr>
@@ -232,7 +235,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {slots.map((slot) => (
+              {displaySlots.map((slot) => (
                 <tr key={slot.id}>
                   <td className="px-3 py-3 border border-[#334155] bg-[#1E293B] text-white text-center font-bold text-xs whitespace-nowrap">
                     {slot.startTime} – {slot.endTime}
@@ -261,7 +264,8 @@ export default function DashboardPage() {
               ))}
             </tbody>
           </table>
-        )}
+          );
+        })()}
 
         {/* ──── DAY ──── */}
         {viewMode === "day" && (
