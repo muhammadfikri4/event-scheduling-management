@@ -247,10 +247,10 @@ export default function DashboardPage() {
                         style={st ? { backgroundColor: st.bg } : {}}
                       >
                         {s ? (
-                          <button onClick={() => setDetail(s)} className="w-full hover:opacity-70 transition-opacity">
+                          <button onClick={() => setDetail(s)} className="w-full hover:opacity-70 transition-opacity" title={s.team.name}>
                             <div className="flex items-center justify-center gap-1.5">
-                              {s.team.logo && <Image src={s.team.logo} alt={s.team.name} width={20} height={20} className="w-5 h-5 rounded-full object-cover" />}
-                              <span className="font-semibold text-sm" style={{ color: st!.text }}>{s.team.name}</span>
+                              {s.team.logo && <Image src={s.team.logo} alt={s.team.name} width={20} height={20} className="w-5 h-5 rounded-full object-cover shrink-0" />}
+                              <span className="font-semibold text-xs truncate max-w-[120px]" style={{ color: st!.text }}>{s.team.name}</span>
                             </div>
                           </button>
                         ) : null}

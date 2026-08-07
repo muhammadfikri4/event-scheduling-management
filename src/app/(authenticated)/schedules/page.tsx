@@ -39,6 +39,15 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Sudah Bermain" },
 ];
 
+function getContrastColor(hex: string): string {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#FFFFFF";
+}
+
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline", standby: "secondary", playing: "default", completed: "destructive",
 };
@@ -62,8 +71,9 @@ function DraggableSchedule({ schedule, onDelete, onStatusChange }: {
       <div
         {...attributes}
         {...listeners}
-        className="rounded px-2 py-1.5 text-xs font-medium text-white cursor-grab active:cursor-grabbing flex items-center gap-1"
-        style={{ backgroundColor: schedule.team.color }}
+        className="rounded px-2 py-1.5 text-xs font-medium cursor-grab active:cursor-grabbing flex items-center gap-1 border"
+        style={{ backgroundColor: schedule.team.color, color: getContrastColor(schedule.team.color), borderColor: getContrastColor(schedule.team.color) + "20" }}
+        title={schedule.team.name}
       >
         <GripVertical className="w-3 h-3 opacity-60 shrink-0" />
         <span className="truncate">{schedule.team.name}</span>
@@ -103,7 +113,7 @@ function DroppableCell({ slotId, typeId, children }: {
   return (
     <td
       ref={setNodeRef}
-      className={`p-2 border-l group transition-colors min-w-[120px] ${isOver ? "bg-primary/10 ring-2 ring-primary/30 ring-inset" : ""}`}
+      className={`p-2 border-l group transition-colors min-w-[160px] ${isOver ? "bg-primary/10 ring-2 ring-primary/30 ring-inset" : ""}`}
     >
       {children}
     </td>
@@ -298,8 +308,8 @@ export default function SchedulesPage() {
           <DragOverlay>
             {activeSchedule && (
               <div
-                className="rounded px-3 py-2 text-xs font-medium text-white shadow-lg cursor-grabbing"
-                style={{ backgroundColor: activeSchedule.team.color, minWidth: 100 }}
+                className="rounded px-3 py-2 text-xs font-medium shadow-lg cursor-grabbing border"
+                style={{ backgroundColor: activeSchedule.team.color, color: getContrastColor(activeSchedule.team.color), minWidth: 100 }}
               >
                 {activeSchedule.team.name}
                 <span className="opacity-70 ml-1">→ {activeSchedule.competitionType.code}</span>
