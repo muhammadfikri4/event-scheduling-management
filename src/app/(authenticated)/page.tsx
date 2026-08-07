@@ -120,6 +120,18 @@ export default function DashboardPage() {
     }
   }, [selectedDate, viewMode]);
 
+  // Auto refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+      fetchSchedules();
+      if (viewMode === "grid" || viewMode === "day") {
+        fetch(`/api/notes?eventDate=${format(selectedDate, "yyyy-MM-dd")}`).then((r) => r.json()).then(setNotes);
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchData, fetchSchedules, selectedDate, viewMode]);
+
   // Real-time: listen via socket.io
   useEffect(() => {
     let socket: ReturnType<typeof import("socket.io-client").io> | null = null;
