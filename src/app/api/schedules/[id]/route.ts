@@ -16,6 +16,7 @@ export async function PUT(
       timeSlotId: body.timeSlotId,
       eventDate: body.eventDate,
       status: body.status,
+      completionTime: body.completionTime,
     },
     include: {
       team: true,

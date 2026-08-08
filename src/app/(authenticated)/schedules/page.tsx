@@ -28,7 +28,7 @@ interface CompetitionType { id: string; name: string; code: string; color: strin
 interface TimeSlot { id: string; startTime: string; endTime: string; order: number }
 interface Schedule {
   id: string; teamId: string; competitionTypeId: string; timeSlotId: string;
-  eventDate: string; status: string;
+  eventDate: string; status: string; completionTime: string | null;
   team: Team; competitionType: CompetitionType; timeSlot: TimeSlot;
 }
 
@@ -37,6 +37,7 @@ const STATUS_OPTIONS = [
   { value: "standby", label: "Standby" },
   { value: "playing", label: "Sedang Bermain" },
   { value: "completed", label: "Sudah Bermain" },
+  { value: "not_playing", label: "Tidak Bermain" },
 ];
 
 function getContrastColor(hex: string): string {
@@ -57,13 +58,15 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   playing: { bg: "#3B82F6", text: "#FFFFFF" },
   standby: { bg: "#FACC15", text: "#1A1A1A" },
   pending: { bg: "#FFFFFF", text: "#6B7280" },
+  not_playing: { bg: "#EF4444", text: "#FFFFFF" },
 };
 
 // Draggable schedule card
-function DraggableSchedule({ schedule, onDelete, onStatusChange }: {
+function DraggableSchedule({ schedule, onDelete, onStatusChange, onCompletionTimeChange }: {
   schedule: Schedule;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onCompletionTimeChange: (id: string, time: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: schedule.id,
@@ -105,6 +108,17 @@ function DraggableSchedule({ schedule, onDelete, onStatusChange }: {
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+      {schedule.status === "completed" && (
+        <input
+          type="text"
+          list={`time-suggestions-${schedule.id}`}
+          defaultValue={schedule.completionTime || ""}
+          placeholder="Waktu perolehan"
+          onBlur={(e) => onCompletionTimeChange(schedule.id, e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }}
+          className="h-5 w-full text-[10px] border rounded px-1.5 bg-background mt-1"
+        />
+      )}
     </div>
   );
 }
@@ -180,6 +194,11 @@ export default function SchedulesPage() {
 
   async function handleStatusChange(id: string, status: string) {
     await fetch(`/api/schedules/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    fetchSchedules();
+  }
+
+  async function handleCompletionTimeChange(id: string, completionTime: string) {
+    await fetch(`/api/schedules/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completionTime: completionTime || null }) });
     fetchSchedules();
   }
 
@@ -298,6 +317,7 @@ export default function SchedulesPage() {
                             schedule={s}
                             onDelete={handleDelete}
                             onStatusChange={handleStatusChange}
+                            onCompletionTimeChange={handleCompletionTimeChange}
                           />
                         ) : (
                           <button

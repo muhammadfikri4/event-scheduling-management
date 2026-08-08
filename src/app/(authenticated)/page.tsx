@@ -43,7 +43,7 @@ interface CompetitionType { id: string; name: string; code: string; color: strin
 interface TimeSlot { id: string; startTime: string; endTime: string; order: number }
 interface Schedule {
   id: string; teamId: string; competitionTypeId: string; timeSlotId: string;
-  eventDate: string; status: string;
+  eventDate: string; status: string; completionTime: string | null;
   team: Team; competitionType: CompetitionType; timeSlot: TimeSlot;
 }
 
@@ -60,6 +60,7 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
   playing: { label: "Sedang Bermain", variant: "default", bg: "#3B82F6", text: "#FFFFFF" },
   standby: { label: "Standby", variant: "secondary", bg: "#FACC15", text: "#1A1A1A" },
   pending: { label: "Belum Bermain", variant: "outline", bg: "#FFFFFF", text: "#6B7280" },
+  not_playing: { label: "Tidak Bermain", variant: "destructive", bg: "#EF4444", text: "#FFFFFF" },
 };
 
 export default function DashboardPage() {
@@ -267,6 +268,9 @@ export default function DashboardPage() {
                               {s.team.logo && <Image src={s.team.logo} alt={s.team.name} width={20} height={20} className="w-5 h-5 rounded-full object-cover shrink-0" />}
                               <span className="font-semibold text-xs truncate max-w-[120px]" style={{ color: st!.text }}>{s.team.name}</span>
                             </div>
+                            {s.completionTime && (
+                              <span className="text-[10px] opacity-70 block mt-0.5" style={{ color: st!.text }}>{s.completionTime}</span>
+                            )}
                           </button>
                         ) : null}
                       </td>
@@ -505,6 +509,12 @@ export default function DashboardPage() {
                 <span>{detail.timeSlot.startTime} – {detail.timeSlot.endTime}</span>
                 <span className="text-muted-foreground">Status</span>
                 <Badge variant={STATUS[detail.status]?.variant} className="w-fit">{STATUS[detail.status]?.label}</Badge>
+                {detail.completionTime && (
+                  <>
+                    <span className="text-muted-foreground">Waktu Perolehan</span>
+                    <span className="font-mono font-semibold">{detail.completionTime}</span>
+                  </>
+                )}
               </div>
             </div>
           )}
